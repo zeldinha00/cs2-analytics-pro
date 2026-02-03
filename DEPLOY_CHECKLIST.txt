@@ -1,0 +1,172 @@
+╔══════════════════════════════════════════════════════════════════╗
+║          🚀 CHECKLIST DE DEPLOY - CS2 ANALYTICS PRO            ║
+╚══════════════════════════════════════════════════════════════════╝
+
+✅ FASE 1: GIT LOCAL (CONCLUÍDO!)
+═══════════════════════════════════════════════════════════════════
+
+  ✅ Git instalado e configurado
+  ✅ Repositório local inicializado (.git/)
+  ✅ 83 arquivos commitados
+  ✅ 3 commits feitos:
+     • 7b8a91b - Initial commit - Ready for deployment
+     • d0818ae - Add deployment configuration and scripts
+     • 628ee94 - Add deployment status file
+
+Status: READY TO PUSH
+
+
+⏳ FASE 2: GITHUB (PRÓXIMO)
+═══════════════════════════════════════════════════════════════════
+
+  [ ] Criar repositório em https://github.com/new
+      Nome: cs2-analytics-pro
+      Visibilidade: Private (ou Public)
+      ⚠️ Não adicionar README, .gitignore ou License
+  
+  [ ] Fazer Push (execute no PowerShell):
+      .\push-github.ps1
+  
+  [ ] Verificar se tudo foi para GitHub
+      https://github.com/SEU_USUARIO/cs2-analytics-pro
+
+
+⏳ FASE 3: FRONTEND (VERCEL)
+═══════════════════════════════════════════════════════════════════
+
+  [ ] Criar conta em https://vercel.com (Sign in with GitHub)
+  
+  [ ] Importar repositório
+      New Project → Import Git Repository
+  
+  [ ] Configurar Build:
+      ✓ Framework: Vite (detectado automaticamente)
+      ✓ Build: npm run build
+      ✓ Output: dist
+  
+  [ ] Adicionar Environment Variables:
+      VITE_SUPABASE_URL = https://ygwzooovjfltqdqksgqe.supabase.co
+      VITE_SUPABASE_ANON_KEY = [sua chave Supabase]
+      VITE_API_URL = (deixar vazio por enquanto)
+  
+  [ ] Deploy
+  
+  [ ] Copiar URL do frontend (ex: https://cs2-analytics-pro.vercel.app)
+
+
+⏳ FASE 4: BACKEND (RENDER)
+═══════════════════════════════════════════════════════════════════
+
+  [ ] Criar conta em https://render.com (Sign in with GitHub)
+  
+  [ ] New → Web Service
+      Conectar repositório cs2-analytics-pro
+  
+  [ ] Configurar Service:
+      Name: cs2-analytics-backend
+      Region: Oregon (US West)
+      Branch: main
+      Root: backend
+      Runtime: Node
+      Build: npm install && pip install -r requirements.txt
+      Start: node server.js
+      Instance: Free
+  
+  [ ] Adicionar Environment Variables:
+      NODE_ENV = production
+      PORT = 3002
+      SUPABASE_URL = https://ygwzooovjfltqdqksgqe.supabase.co
+      SUPABASE_ANON_KEY = [sua chave Supabase]
+      CORS_ORIGINS = https://cs2-analytics-pro.vercel.app
+  
+  [ ] Create Web Service (aguarde 5-10 minutos)
+  
+  [ ] Copiar URL do backend (ex: https://cs2-analytics-backend.onrender.com)
+
+
+⏳ FASE 5: CONECTAR FRONTEND AO BACKEND
+═══════════════════════════════════════════════════════════════════
+
+  [ ] Voltar ao Vercel Dashboard
+  
+  [ ] Settings → Environment Variables
+      Editar VITE_API_URL = https://cs2-analytics-backend.onrender.com
+  
+  [ ] Salvar alterações
+  
+  [ ] Deployments → Redeploy (último deploy)
+  
+  [ ] Aguardar 2-3 minutos
+
+
+🎊 FASE 6: VERIFICAÇÃO FINAL
+═══════════════════════════════════════════════════════════════════
+
+  [ ] Acessar https://cs2-analytics-pro.vercel.app
+  
+  [ ] Verificar se carregou
+  
+  [ ] Fazer login
+  
+  [ ] Tentar enviar uma demo
+      ⚠️ Pode demorar 60s na primeira vez (Render hibernando)
+  
+  [ ] Conferir dados no backend
+
+
+╔══════════════════════════════════════════════════════════════════╗
+║                    URLS FINAIS                                  ║
+╠══════════════════════════════════════════════════════════════════╣
+║ 🎨 Frontend: https://cs2-analytics-pro.vercel.app              ║
+║ ⚙️  Backend:  https://cs2-analytics-backend.onrender.com       ║
+║ 🗄️  Database: Supabase (já configurado)                        ║
+╚══════════════════════════════════════════════════════════════════╝
+
+
+⚠️  OBSERVAÇÕES IMPORTANTES
+═══════════════════════════════════════════════════════════════════
+
+1. RENDER HIBERNATION
+   ⏰ Dopo 15 minutos sem uso, o backend hibernat
+   🔄 Primeira request: leva ~60 segundos
+   ✅ Depois: volta ao normal
+
+2. VARIÁVEIS DE AMBIENTE
+   🔑 Nunca comitar .env no Git
+   ✅ .env.example é o template
+   ⚠️ Checar que .env está no .gitignore
+
+3. GITHUB AUTH
+   🔐 Você precisará de um Personal Access Token para push
+   ou usar SSH keys
+
+4. UPDATER FUTURAS
+   📝 Qualquer mudança no código:
+      git add .
+      git commit -m "descrição"
+      git push
+   
+   ✅ Vercel faz deploy automático
+   ✅ Render faz deploy automático
+
+
+📚 DOCUMENTAÇÃO
+═══════════════════════════════════════════════════════════════════
+
+  📖 DEPLOY.md       - Guia completo detalhado
+  📖 GITHUB_SETUP.md - Instruções step-by-step
+  📖 DEPLOY_STATUS.txt - Este arquivo
+
+
+🎓 PRECISA DE AJUDA?
+═══════════════════════════════════════════════════════════════════
+
+1. Leia os arquivos .md primeiro
+2. Verifique os logs no Vercel/Render
+3. Testequeries ao /api/health do backend
+4. Confira variáveis de ambiente
+
+
+⏱️  TEMPO TOTAL: ~20-30 minutos
+
+BOA SORTE! 🚀
