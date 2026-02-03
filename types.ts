@@ -37,6 +37,7 @@ export interface Match {
   mapName: string;
   mapImage: string;
   date: string;
+  tournamentName?: string; // Nome do campeonato
   teamA: Team;
   teamB: Team;
   rounds: Round[];

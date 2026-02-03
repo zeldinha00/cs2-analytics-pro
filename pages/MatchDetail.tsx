@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Match, TeamSide, RoundEndReason, Round } from '../types';
-import { ArrowLeft, Clock, Bomb, Skull, Wrench, Shield, Zap, Target, Trophy } from 'lucide-react';
+import { ArrowLeft, Clock, Bomb, Skull, Wrench, Shield, Zap, Target, Trophy, Edit2, Check, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import supabaseService from '../services/supabaseService';
 
 interface MatchDetailProps {
   match: Match;
   onBack: () => void;
+  userRole?: string;
 }
 
-const MatchDetail: React.FC<MatchDetailProps> = ({ match, onBack }) => {
+const MatchDetail: React.FC<MatchDetailProps> = ({ match, onBack, userRole }) => {
+  const isAdmin = userRole === 'ADMIN';
   // Carregar dados completos do match (incluindo rounds) caso venham vazios
   const [loadedMatch, setLoadedMatch] = useState<Match | null>(null);
+  const [isEditingTournament, setIsEditingTournament] = useState(false);
+  const [tournamentNameInput, setTournamentNameInput] = useState('');
+  const [isSavingTournament, setIsSavingTournament] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +49,38 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ match, onBack }) => {
   useEffect(() => {
     setTablePage(1);
   }, [current.id, rounds.length]);
+  
+  // Função para iniciar edição do campeonato
+  const startEditTournament = () => {
+    setTournamentNameInput(current.tournamentName || '');
+    setIsEditingTournament(true);
+  };
+
+  // Função para salvar o nome do campeonato
+  const saveTournament = async () => {
+    setIsSavingTournament(true);
+    const success = await supabaseService.updateMatchTournament(current.id, tournamentNameInput.trim());
+    
+    if (success) {
+      // Atualizar o estado local
+      if (loadedMatch) {
+        setLoadedMatch({ ...loadedMatch, tournamentName: tournamentNameInput.trim() });
+      } else {
+        match.tournamentName = tournamentNameInput.trim();
+      }
+      setIsEditingTournament(false);
+    } else {
+      alert('Erro ao salvar o nome do campeonato. Tente novamente.');
+    }
+    setIsSavingTournament(false);
+  };
+
+  // Função para cancelar edição
+  const cancelEditTournament = () => {
+    setIsEditingTournament(false);
+    setTournamentNameInput('');
+  };
+
   // Helpers
   const getRoundIcon = (reason: RoundEndReason) => {
     switch(reason) {
@@ -146,11 +183,66 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ match, onBack }) => {
             
             {/* Header: Date & Map */}
             <div className="flex justify-between items-start border-b border-slate-700/50 pb-4">
-               <div>
-                  <h2 className="text-white font-bold text-lg flex items-center gap-2">
-                     <Trophy size={18} className="text-yellow-500" />
-                     BLAST Bounty 2026 Season 1 Finals
-                  </h2>
+               <div className="flex-1">
+                  {isEditingTournament ? (
+                    <div className="flex items-center gap-2">
+                      <Trophy size={18} className="text-yellow-500 flex-shrink-0" />
+                      <input
+                        type="text"
+                        value={tournamentNameInput}
+                        onChange={(e) => setTournamentNameInput(e.target.value)}
+                        placeholder="Nome do Campeonato"
+                        className="flex-1 bg-slate-800 border border-slate-600 text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-blue-500 text-base font-bold"
+                        autoFocus
+                      />
+                      <button
+                        onClick={saveTournament}
+                        disabled={isSavingTournament}
+                        className="p-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                        title="Salvar"
+                      >
+                        <Check size={16} />
+                      </button>
+                      <button
+                        onClick={cancelEditTournament}
+                        disabled={isSavingTournament}
+                        className="p-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                        title="Cancelar"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 group">
+                      {current.tournamentName ? (
+                        <>
+                          <h2 className="text-white font-bold text-lg flex items-center gap-2">
+                            <Trophy size={18} className="text-yellow-500" />
+                            {current.tournamentName}
+                          </h2>
+                          {isAdmin && (
+                            <button
+                              onClick={startEditTournament}
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded transition-all"
+                              title="Editar campeonato (Admin)"
+                            >
+                              <Edit2 size={14} className="text-slate-400" />
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        isAdmin && (
+                          <button
+                            onClick={startEditTournament}
+                            className="text-slate-500 hover:text-white text-sm flex items-center gap-2 transition-colors"
+                          >
+                            <Trophy size={16} />
+                            <span>+ Adicionar Campeonato</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
                   <div className="text-slate-400 text-sm mt-1 flex gap-3">
                      <span>{current.date}</span>
                      <span>•</span>

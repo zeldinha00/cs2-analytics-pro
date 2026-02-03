@@ -125,7 +125,7 @@ const Matches: React.FC<MatchesProps> = ({ matches, onViewDetails }) => {
                     <span>{match.duration}</span>
                   </div>
                   <div className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                    COMPETITIVO
+                    {match.tournamentName || 'COMPETITIVO'}
                   </div>
                 </div>
 

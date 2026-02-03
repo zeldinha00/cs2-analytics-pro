@@ -91,6 +91,7 @@ export const supabaseService = {
         map_name: match.mapName,
         map_image: match.mapImage,
         date: match.date,
+        tournament_name: match.tournamentName || null, // Nome do campeonato
         duration: match.duration,
         file_name: 'imported',
         uploaded_at: match.uploadedAt,
@@ -204,7 +205,7 @@ export const supabaseService = {
       // Buscar todos os matches
       const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
-        .select('id, map_name, map_image, date, team_a_id, team_b_id, duration, uploaded_at, created_at')
+        .select('id, map_name, map_image, date, tournament_name, team_a_id, team_b_id, duration, uploaded_at, created_at')
         .order('created_at', { ascending: false });
 
       if (matchesError) throw matchesError;
@@ -314,6 +315,7 @@ export const supabaseService = {
           mapName: dbMatch.map_name,
           mapImage: dbMatch.map_image,
           date: dbMatch.date,
+          tournamentName: (dbMatch as any).tournament_name, // Nome do campeonato
           teamA: {
             id: teamA.id,
             name: teamA.name,
@@ -506,6 +508,7 @@ export const supabaseService = {
         mapName: matchData.map_name,
         mapImage: matchData.map_image,
         date: matchData.date,
+        tournamentName: matchData.tournament_name, // Nome do campeonato
         teamA: {
           id: teamA.id,
           name: teamA.name,
@@ -710,6 +713,26 @@ export const supabaseService = {
     } catch (error) {
       console.error('❌ Erro ao atualizar match:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Atualiza o nome do campeonato de uma partida
+   */
+  updateMatchTournament: async (matchId: string, tournamentName: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .update({ tournament_name: tournamentName || null })
+        .eq('id', matchId);
+
+      if (error) throw error;
+      
+      console.log(`✅ Nome do campeonato atualizado para: ${tournamentName}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar nome do campeonato:', error);
+      return false;
     }
   }
 };

@@ -8,6 +8,7 @@ interface SidebarProps {
   isMobileOpen: boolean;
   setIsMobileOpen: (open: boolean) => void;
   userRole: UserRole;
+  userName: string;
   onLogout: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -19,6 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen, 
   setIsMobileOpen, 
   userRole, 
+  userName,
   onLogout,
   isCollapsed,
   onToggleCollapse
@@ -150,8 +152,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className={`border-t border-slate-800/80 ${isCollapsed ? 'p-2' : 'p-4'}`}>
             {!isCollapsed && (
               <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3 mb-3">
-                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Acesso</div>
-                <div className="text-sm text-white font-semibold">{userRole}</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Usuário</div>
+                <div className="text-sm text-white font-semibold">{userName || 'Usuário'}</div>
               </div>
             )}
             <button 

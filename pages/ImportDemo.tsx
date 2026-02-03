@@ -13,6 +13,7 @@ const ImportDemo: React.FC<ImportDemoProps> = ({ onImportMatch }) => {
   const [queue, setQueue] = useState<ProcessingStatus[]>([]);
   const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [tournamentName, setTournamentName] = useState(''); // Nome do campeonato
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileQueueRef = useRef<File[]>([]);
   const partialMatchesRef = useRef<Map<string, { parts: Match[], totalParts: number }>>(new Map());
@@ -150,6 +151,11 @@ const ImportDemo: React.FC<ImportDemoProps> = ({ onImportMatch }) => {
           // Combinar todas as partes em uma única partida
           const combinedMatch = combineMatchParts(partialMatch.parts.filter(p => p));
           
+          // Adicionar nome do campeonato
+          if (tournamentName.trim()) {
+            combinedMatch.tournamentName = tournamentName.trim();
+          }
+          
           // Verificar duplicatas
           const isDuplicate = await checkDuplicate(combinedMatch);
           
@@ -184,6 +190,12 @@ const ImportDemo: React.FC<ImportDemoProps> = ({ onImportMatch }) => {
         }
       } else {
         // Demo normal (não é parte de uma partida)
+        
+        // Adicionar nome do campeonato
+        if (tournamentName.trim()) {
+          matchData.tournamentName = tournamentName.trim();
+        }
+        
         const isDuplicate = await checkDuplicate(matchData);
         
         if (isDuplicate) {
@@ -389,6 +401,22 @@ const ImportDemo: React.FC<ImportDemoProps> = ({ onImportMatch }) => {
           </div>
         </div>
       )}
+
+      {/* Tournament Name Input */}
+      <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
+        <label htmlFor="tournament-name" className="block text-sm font-medium text-slate-300 mb-2">
+          Nome do Campeonato (Opcional)
+        </label>
+        <input
+          id="tournament-name"
+          type="text"
+          value={tournamentName}
+          onChange={(e) => setTournamentName(e.target.value)}
+          placeholder="Ex: BLAST Bounty 2026 Season 1 Finals"
+          className="w-full bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-blue-500 placeholder-slate-500 transition-colors"
+        />
+        <p className="text-slate-500 text-xs mt-2">Se informado, será vinculado a todas as demos importadas nesta sessão</p>
+      </div>
 
       {/* Upload Zone */}
       <div 

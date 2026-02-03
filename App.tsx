@@ -90,7 +90,7 @@ const App: React.FC = () => {
       if (match) {
         return (
           <Suspense fallback={<div className="text-slate-400">Carregando...</div>}>
-            <MatchDetail match={match} onBack={() => setSelectedMatchId(null)} />
+            <MatchDetail match={match} onBack={() => setSelectedMatchId(null)} userRole={user?.role} />
           </Suspense>
         );
       }
@@ -198,6 +198,7 @@ const App: React.FC = () => {
         isMobileOpen={isMobileOpen}
         setIsMobileOpen={setIsMobileOpen}
         userRole={user.role}
+        userName={user.username}
         onLogout={handleLogout}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
