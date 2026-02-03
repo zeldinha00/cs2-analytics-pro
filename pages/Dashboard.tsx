@@ -335,10 +335,10 @@ const Dashboard: React.FC<DashboardProps> = ({ matches }) => {
           color="blue"
         />
         <StatCard 
-          title="Pistol CT Win %" 
-          value={`${stats.pistolCtWinRate}%`}
-          icon={<Target size={24} />}
-          subtext="Rounds 1 & 13"
+          title="Total de Partidas" 
+          value={`${stats.totalMatches}`}
+          icon={<Trophy size={24} />}
+          subtext={`Total de Rodadas: ${stats.totalRounds}`}
           color="purple"
         />
       </div>
