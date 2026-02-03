@@ -56,20 +56,16 @@ const App: React.FC = () => {
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
     setCurrentPage('dashboard');
-    // Força atualização da página para garantir que o estado seja sincronizado
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    // Força redirect para garantir sincronização
+    window.location.href = '/';
   };
 
   const handleLogout = () => {
     AuthService.logout();
     setUser(null);
     setCurrentPage('dashboard');
-    // Força atualização da página para garantir que o estado seja limpo
-    setTimeout(() => {
-      window.location.reload();
-    }, 100);
+    // Força redirect para garantir limpeza do estado
+    window.location.href = '/';
   };
 
   const handleImportMatch = (newMatch: Match) => {
