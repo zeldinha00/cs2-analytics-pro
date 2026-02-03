@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cs2-analytics-backend
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install && pip install -r requirements.txt
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3002
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+    healthCheckPath: /api/health

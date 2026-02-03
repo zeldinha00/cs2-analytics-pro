@@ -1,0 +1,9 @@
+﻿python :   File "C:\Users\Roger\Desktop\cs2-analytics-pro\backend\parse_demo.py", line 69
+No linha:1 caractere:1
++ python backend/parse_demo.py "C:\Users\Roger\Desktop\liquid-t-vs-falc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  File "C:\User...mo.py", line 69:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    numeric_map = {
+IndentationError: unexpected indent
