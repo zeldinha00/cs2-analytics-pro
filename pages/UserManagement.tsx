@@ -8,6 +8,9 @@ const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [supabaseOnline, setSupabaseOnline] = useState<boolean | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editRole, setEditRole] = useState<UserRole>('USER');
   
   // Form State
   const [newUsername, setNewUsername] = useState('');
@@ -20,7 +23,27 @@ const UserManagement: React.FC = () => {
     checkSupabase();
   }, []);
 
-  const loadUsers = () => {
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, username, role, created_at')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        const mapped = data.map(u => ({
+          id: u.id,
+          username: u.username,
+          role: u.role as UserRole,
+          createdAt: u.created_at
+        }));
+        setUsers(mapped);
+        return;
+      }
+    } catch (err) {
+      // fallback local
+    }
+
     setUsers(AuthService.getAllUsers());
   };
 
@@ -44,7 +67,7 @@ const UserManagement: React.FC = () => {
       setNewUsername('');
       setNewPassword('');
       setShowAddForm(false);
-      loadUsers();
+      await loadUsers();
       await checkSupabase(); // Recheck Supabase status after creation
       
       // Mostrar mensagem de sucesso temporária
@@ -56,7 +79,7 @@ const UserManagement: React.FC = () => {
         // Ainda assim recarregar a lista pois foi salvo localmente
         setNewUsername('');
         setNewPassword('');
-        loadUsers();
+        await loadUsers();
         // Auto-dismiss após 8 segundos
         setTimeout(() => setError(''), 8000);
       } else {
@@ -66,14 +89,59 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (confirm('Tem certeza que deseja deletar este usuário?')) {
       try {
+        // Tentar deletar no Supabase primeiro
+        const { error } = await supabase
+          .from('users')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          console.warn('Falha ao deletar no Supabase, tentando local:', error.message);
+        }
+
+        // Fallback local
         AuthService.deleteUser(id);
-        loadUsers();
+        await loadUsers();
       } catch (err: any) {
         alert(err.message);
       }
+    }
+  };
+
+  const startEditUser = (user: User) => {
+    setEditingUserId(user.id);
+    setEditUsername(user.username);
+    setEditRole(user.role);
+  };
+
+  const cancelEditUser = () => {
+    setEditingUserId(null);
+    setEditUsername('');
+    setEditRole('USER');
+  };
+
+  const saveEditUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          username: editUsername.trim(),
+          role: editRole,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) {
+        console.warn('Falha ao atualizar no Supabase:', error.message);
+      }
+
+      await loadUsers();
+      cancelEditUser();
+    } catch (err: any) {
+      alert(err.message || 'Falha ao atualizar usuário');
     }
   };
 
@@ -165,31 +233,81 @@ const UserManagement: React.FC = () => {
                     <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-300">
                       <UserIcon size={16} />
                     </div>
-                    <span className="font-medium text-white">{user.username}</span>
+                    {editingUserId === user.id ? (
+                      <input
+                        type="text"
+                        value={editUsername}
+                        onChange={e => setEditUsername(e.target.value)}
+                        className="bg-slate-800 border border-slate-600 text-white px-2 py-1 rounded"
+                      />
+                    ) : (
+                      <span className="font-medium text-white">{user.username}</span>
+                    )}
                   </div>
                 </td>
                 <td className="py-4 px-6">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                    user.role === 'ADMIN' 
-                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' 
-                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                  }`}>
-                    {user.role === 'ADMIN' ? <Shield size={10} /> : <UserIcon size={10} />}
-                    {user.role}
-                  </span>
+                  {editingUserId === user.id ? (
+                    <select
+                      value={editRole}
+                      onChange={e => setEditRole(e.target.value as UserRole)}
+                      className="bg-slate-800 border border-slate-600 text-white px-2 py-1 rounded text-sm"
+                    >
+                      <option value="USER">USER</option>
+                      <option value="ADMIN">ADMIN</option>
+                    </select>
+                  ) : (
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                      user.role === 'ADMIN' 
+                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' 
+                        : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    }`}>
+                      {user.role === 'ADMIN' ? <Shield size={10} /> : <UserIcon size={10} />}
+                      {user.role}
+                    </span>
+                  )}
                 </td>
                 <td className="py-4 px-6 text-slate-400 text-sm">
                   {new Date(user.createdAt).toLocaleDateString('pt-BR')}
                 </td>
                 <td className="py-4 px-6 text-right">
                   {user.username !== 'admin' && (
-                    <button 
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="text-slate-500 hover:text-red-400 transition-colors"
-                      title="Deletar Usuário"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {editingUserId === user.id ? (
+                        <>
+                          <button
+                            onClick={() => saveEditUser(user.id)}
+                            className="text-green-400 hover:text-green-300 transition-colors text-sm"
+                            title="Salvar"
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            onClick={cancelEditUser}
+                            className="text-slate-400 hover:text-slate-200 transition-colors text-sm"
+                            title="Cancelar"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditUser(user)}
+                            className="text-slate-500 hover:text-blue-400 transition-colors text-sm"
+                            title="Editar"
+                          >
+                            Editar
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="text-slate-500 hover:text-red-400 transition-colors"
+                            title="Deletar Usuário"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
