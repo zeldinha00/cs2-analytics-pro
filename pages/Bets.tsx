@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Edit2, Save, X, Plus } from 'lucide-react';
+import { Trash2, Edit2, Save, X, Plus, TrendingUp, TrendingDown, DollarSign, Target, BarChart3, PieChart } from 'lucide-react';
 import supabaseService from '../services/supabaseService';
 import { Bet, BettingHouse, BetStatus, CashAccount } from '../types';
 
@@ -189,28 +189,145 @@ export default function Bets({ userId }: BetsProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg">Carregando...</div>
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+        <div className="text-lg text-white">Carregando...</div>
       </div>
     );
   }
 
+  const globalMetrics = calculateMetrics();
+  const totalInitialBalance = cashAccounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
+  const totalProfit = parseFloat(globalMetrics.profit);
+  const totalFinalBalance = totalInitialBalance + totalProfit;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">📊 Gerenciador de Apostas</h1>
-          <p className="text-slate-400">Registre e acompanhe suas apostas por casa de apostas</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                <TrendingUp size={28} className="text-white" />
+              </div>
+              Gerenciador de Apostas
+            </h1>
+            <p className="text-slate-400 mt-2">Acompanhe seus investimentos e resultados em tempo real</p>
+          </div>
+        </div>
+
+        {/* PAINEL RESUMO GERAL */}
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 p-6 border-b border-slate-700">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+              <PieChart size={24} className="text-blue-400" />
+              Resumo Geral de Todas as Casas
+            </h2>
+            <p className="text-slate-400 text-sm mt-1">Consolidado de todos os seus investimentos</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-6">
+            {/* Total Investido */}
+            <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-blue-500 transition">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign size={18} className="text-blue-400" />
+                <span className="text-xs text-slate-400 uppercase font-semibold">Capital Inicial</span>
+              </div>
+              <p className="text-2xl font-bold text-white">R$ {totalInitialBalance.toFixed(2)}</p>
+            </div>
+
+            {/* Total Apostado */}
+            <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-purple-500 transition">
+              <div className="flex items-center gap-2 mb-2">
+                <Target size={18} className="text-purple-400" />
+                <span className="text-xs text-slate-400 uppercase font-semibold">Total Apostado</span>
+              </div>
+              <p className="text-2xl font-bold text-white">R$ {globalMetrics.totalStaked}</p>
+            </div>
+
+            {/* Lucro/Prejuízo */}
+            <div className={`bg-slate-700/50 rounded-xl p-4 border ${totalProfit >= 0 ? 'border-green-500/50 hover:border-green-500' : 'border-red-500/50 hover:border-red-500'} transition`}>
+              <div className="flex items-center gap-2 mb-2">
+                {totalProfit >= 0 ? <TrendingUp size={18} className="text-green-400" /> : <TrendingDown size={18} className="text-red-400" />}
+                <span className="text-xs text-slate-400 uppercase font-semibold">Lucro/Prejuízo</span>
+              </div>
+              <p className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalProfit >= 0 ? '+' : ''}R$ {globalMetrics.profit}
+              </p>
+            </div>
+
+            {/* Saldo Final */}
+            <div className={`bg-gradient-to-br ${totalProfit >= 0 ? 'from-green-600/20 to-emerald-600/20 border-green-500' : 'from-red-600/20 to-rose-600/20 border-red-500'} rounded-xl p-4 border-2 shadow-lg`}>
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 size={18} className={totalProfit >= 0 ? 'text-green-400' : 'text-red-400'} />
+                <span className="text-xs text-slate-300 uppercase font-bold">💰 Saldo Final</span>
+              </div>
+              <p className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                R$ {totalFinalBalance.toFixed(2)}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {totalProfit >= 0 ? '↗' : '↘'} {((totalProfit / totalInitialBalance) * 100).toFixed(1)}% do inicial
+              </p>
+            </div>
+
+            {/* ROI */}
+            <div className={`bg-slate-700/50 rounded-xl p-4 border ${parseFloat(globalMetrics.roi) >= 0 ? 'border-green-500/50 hover:border-green-500' : 'border-red-500/50 hover:border-red-500'} transition`}>
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 size={18} className={parseFloat(globalMetrics.roi) >= 0 ? 'text-green-400' : 'text-red-400'} />
+                <span className="text-xs text-slate-400 uppercase font-semibold">ROI</span>
+              </div>
+              <p className={`text-2xl font-bold ${parseFloat(globalMetrics.roi) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {parseFloat(globalMetrics.roi) >= 0 ? '+' : ''}{globalMetrics.roi}%
+              </p>
+            </div>
+
+            {/* Taxa de Acerto */}
+            <div className="bg-slate-700/50 rounded-xl p-4 border border-slate-600 hover:border-yellow-500 transition">
+              <div className="flex items-center gap-2 mb-2">
+                <Target size={18} className="text-yellow-400" />
+                <span className="text-xs text-slate-400 uppercase font-semibold">Taxa Acerto</span>
+              </div>
+              <p className="text-2xl font-bold text-yellow-400">{globalMetrics.hitRate}%</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {globalMetrics.wonBets}V / {globalMetrics.lostBets}D
+              </p>
+            </div>
+          </div>
+
+          {/* Estatísticas Extras */}
+          <div className="px-6 pb-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+              <span className="text-slate-400">Total de Apostas:</span>
+              <span className="text-white font-bold ml-2">{globalMetrics.totalBets}</span>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+              <span className="text-slate-400">Odd Média:</span>
+              <span className="text-white font-bold ml-2">{globalMetrics.averageOdd}</span>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+              <span className="text-slate-400">Casas Ativas:</span>
+              <span className="text-white font-bold ml-2">{cashAccounts.length}</span>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+              <span className="text-slate-400">Apostas Pendentes:</span>
+              <span className="text-yellow-400 font-bold ml-2">{bets.filter(b => b.betStatus === BetStatus.PENDING).length}</span>
+            </div>
+          </div>
         </div>
 
         {/* Dashboard - Contas de Caixa */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">💰 Suas Contas</h2>
+        <div>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <DollarSign size={24} className="text-green-400" />
+                Contas por Casa de Apostas
+              </h2>
+              <p className="text-slate-400 text-sm mt-1">Detalhamento individual de cada plataforma</p>
+            </div>
             <button
               onClick={() => setShowNewCashForm(!showNewCashForm)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-5 py-2.5 rounded-lg transition shadow-lg hover:shadow-xl"
             >
               <Plus size={20} /> Nova Conta
             </button>
@@ -218,36 +335,46 @@ export default function Bets({ userId }: BetsProps) {
 
           {/* Novo Formulário de Caixa */}
           {showNewCashForm && (
-            <div className="bg-slate-700 rounded-lg p-6 mb-6 border border-slate-600">
-              <h3 className="text-lg font-semibold text-white mb-4">Registrar Nova Conta</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <select
-                  value={newCash.bettingHouse}
-                  onChange={(e) => setNewCash({ ...newCash, bettingHouse: e.target.value as BettingHouse })}
-                  className="bg-slate-600 text-white px-4 py-2 rounded border border-slate-500"
-                >
-                  {Object.values(BettingHouse).map(house => (
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 mb-6 border border-slate-700 shadow-xl">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Plus size={20} className="text-blue-400" />
+                Registrar Nova Conta
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Casa de Apostas</label>
+                  <select
+                    value={newCash.bettingHouse}
+                    onChange={(e) => setNewCash({ ...newCash, bettingHouse: e.target.value as BettingHouse })}
+                    className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition"
+                  >
+                    {Object.values(BettingHouse).map(house => (
                     <option key={house} value={house}>{house}</option>
                   ))}
                 </select>
-                <input
-                  type="number"
-                  placeholder="Saldo Inicial"
-                  value={newCash.initialBalance}
-                  onChange={(e) => setNewCash({ ...newCash, initialBalance: e.target.value })}
-                  className="bg-slate-600 text-white px-4 py-2 rounded border border-slate-500"
-                />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Saldo Inicial (R$)</label>
+                  <input
+                    type="number"
+                    placeholder="1000.00"
+                    value={newCash.initialBalance}
+                    onChange={(e) => setNewCash({ ...newCash, initialBalance: e.target.value })}
+                    className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition"
+                    step="0.01"
+                  />
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={handleAddCashAccount}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-5 py-2.5 rounded-lg transition shadow-lg"
                 >
-                  <Save size={18} /> Salvar
+                  <Save size={18} /> Salvar Conta
                 </button>
                 <button
                   onClick={() => setShowNewCashForm(false)}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                  className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-5 py-2.5 rounded-lg transition border border-slate-600"
                 >
                   <X size={18} /> Cancelar
                 </button>
@@ -258,35 +385,40 @@ export default function Bets({ userId }: BetsProps) {
           {/* Cards de Contas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cashAccounts.length === 0 ? (
-              <div className="col-span-full text-center text-slate-400 py-8">
-                Nenhuma conta registrada. Crie uma para começar!
+              <div className="col-span-full bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-12 text-center border-2 border-dashed border-slate-700">
+                <DollarSign size={48} className="text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-400 text-lg font-semibold mb-2">Nenhuma conta registrada</p>
+                <p className="text-slate-500 text-sm">Crie sua primeira conta para começar a rastrear apostas!</p>
               </div>
             ) : (
               cashAccounts.map(account => {
                 const metrics = calculateMetrics(account.bettingHouse);
                 const profit = parseFloat(metrics.profit);
                 const roi = parseFloat(metrics.roi);
+                const finalBalance = account.initialBalance + profit;
 
                 return (
-                  <div key={account.id} className="bg-slate-700 rounded-lg p-6 border border-slate-600 hover:border-blue-500 transition">
+                  <div key={account.id} className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-700 hover:border-blue-500 transition shadow-xl hover:shadow-2xl">
                     {editingCashId === account.id ? (
-                      <div className="mb-4">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Saldo Inicial</label>
                         <input
                           type="number"
                           value={editCashData.initialBalance}
                           onChange={(e) => setEditCashData({ initialBalance: parseFloat(e.target.value) })}
-                          className="w-full bg-slate-600 text-white px-3 py-2 rounded border border-slate-500 mb-3"
+                          className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none mb-4"
+                          step="0.01"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleUpdateCash(account.id)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded transition text-sm"
+                            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-4 py-2.5 rounded-lg transition shadow-lg"
                           >
                             <Save size={16} /> Salvar
                           </button>
                           <button
                             onClick={() => setEditingCashId(null)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded transition text-sm"
+                            className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-lg transition border border-slate-600"
                           >
                             <X size={16} /> Cancelar
                           </button>
@@ -294,10 +426,13 @@ export default function Bets({ userId }: BetsProps) {
                       </div>
                     ) : (
                       <>
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-xl font-bold text-white">{account.bettingHouse}</h3>
-                            <p className="text-sm text-slate-400">{metrics.totalBets} apostas</p>
+                        <div className="flex justify-between items-start mb-5">
+                          <div className="flex-1">
+                            <h3 className="text-2xl font-bold text-white mb-1">{account.bettingHouse}</h3>
+                            <p className="text-sm text-slate-400 flex items-center gap-1">
+                              <Target size={14} />
+                              {metrics.totalBets} apostas registradas
+                            </p>
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -305,43 +440,75 @@ export default function Bets({ userId }: BetsProps) {
                                 setEditingCashId(account.id);
                                 setEditCashData({ initialBalance: account.initialBalance });
                               }}
-                              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+                              className="p-2.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg transition border border-blue-600/30"
+                              title="Editar saldo inicial"
                             >
                               <Edit2 size={16} />
                             </button>
                             <button
                               onClick={() => handleDeleteCash(account.id)}
-                              className="p-2 bg-red-600 hover:bg-red-700 text-white rounded transition"
+                              className="p-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-lg transition border border-red-600/30"
+                              title="Deletar conta"
                             >
                               <Trash2 size={16} />
                             </button>
                           </div>
                         </div>
 
-                        <div className="space-y-2 mb-4">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">Saldo Inicial:</span>
-                            <span className="text-white font-semibold">R$ {account.initialBalance.toFixed(2)}</span>
+                        <div className="space-y-3 mb-5">
+                          <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+                            <div className="flex justify-between items-center text-sm mb-1">
+                              <span className="text-slate-400">Saldo Inicial:</span>
+                              <span className="text-white font-bold">R$ {account.initialBalance.toFixed(2)}</span>
+                            </div>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">Total Apostado:</span>
-                            <span className="text-white font-semibold">R$ {metrics.totalStaked}</span>
+
+                          <div className="bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+                            <div className="flex justify-between items-center text-sm mb-1">
+                              <span className="text-slate-400">Total Apostado:</span>
+                              <span className="text-purple-400 font-bold">R$ {metrics.totalStaked}</span>
+                            </div>
                           </div>
-                          <div className={`flex justify-between text-sm font-bold ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            <span className="text-slate-300">Lucro/Prejuízo:</span>
-                            <span>R$ {profit >= 0 ? '+' : ''}{metrics.profit}</span>
+
+                          <div className={`rounded-lg p-3 border ${profit >= 0 ? 'bg-green-600/10 border-green-600/30' : 'bg-red-600/10 border-red-600/30'}`}>
+                            <div className="flex justify-between items-center text-sm mb-1">
+                              <span className={profit >= 0 ? 'text-green-300' : 'text-red-300'}>Lucro/Prejuízo:</span>
+                              <span className={`font-bold text-lg ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {profit >= 0 ? '+' : ''}R$ {metrics.profit}
+                              </span>
+                            </div>
                           </div>
-                          <div className={`flex justify-between text-sm font-bold ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            <span className="text-slate-300">ROI:</span>
-                            <span>{roi >= 0 ? '+' : ''}{metrics.roi}%</span>
+
+                          {/* SALDO FINAL - DESTAQUE */}
+                          <div className={`rounded-xl p-4 border-2 shadow-lg ${finalBalance >= account.initialBalance ? 'bg-gradient-to-br from-green-600/20 to-emerald-600/20 border-green-500' : 'bg-gradient-to-br from-red-600/20 to-rose-600/20 border-red-500'}`}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-slate-300 uppercase font-bold mb-1 flex items-center gap-1">
+                                  <BarChart3 size={14} />
+                                  💰 Saldo Final
+                                </p>
+                                <p className={`text-2xl font-bold ${finalBalance >= account.initialBalance ? 'text-green-300' : 'text-red-300'}`}>
+                                  R$ {finalBalance.toFixed(2)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className={`text-xs font-semibold ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {roi >= 0 ? '↗' : '↘'} {roi >= 0 ? '+' : ''}{roi}%
+                                </p>
+                                <p className="text-xs text-slate-400">ROI</p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex justify-between text-sm border-t border-slate-600 pt-2 mt-2">
-                            <span className="text-slate-400">Taxa de Acerto:</span>
-                            <span className="text-yellow-400 font-semibold">{metrics.hitRate}%</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-700">
+                          <div className="text-center">
+                            <p className="text-xs text-slate-400 mb-1">Taxa Acerto</p>
+                            <p className="text-lg font-bold text-yellow-400">{metrics.hitRate}%</p>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">Odd Média:</span>
-                            <span className="text-white font-semibold">{metrics.averageOdd}</span>
+                          <div className="text-center">
+                            <p className="text-xs text-slate-400 mb-1">Odd Média</p>
+                            <p className="text-lg font-bold text-blue-400">{metrics.averageOdd}</p>
                           </div>
                         </div>
                       </>
