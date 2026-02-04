@@ -1,5 +1,5 @@
 import supabase from './supabase';
-import { Match, Round, Team, TeamSide, RoundEndReason, DBMatch, DBTeam, DBRound } from '../types';
+import { Match, Round, Team, TeamSide, RoundEndReason, DBMatch, DBTeam, DBRound, Bet, DBBet, CashAccount, DBCashAccount, BettingHouse, BetStatus } from '../types';
 
 // Toggle para logs verbosos; defina VITE_DEBUG_LOGS=true para ver logs no console
 const DEBUG = import.meta.env.VITE_DEBUG_LOGS === 'true';
@@ -732,6 +732,323 @@ export const supabaseService = {
       return true;
     } catch (error) {
       console.error('❌ Erro ao atualizar nome do campeonato:', error);
+      return false;
+    }
+  },
+
+  // ========== BETS & CASH ACCOUNTS ==========
+
+  /**
+   * Cria uma nova aposta
+   */
+  createBet: async (bet: Omit<Bet, 'id' | 'createdAt' | 'updatedAt'>): Promise<Bet | null> => {
+    try {
+      debugLog('📝 Criando nova aposta...', bet);
+      const now = new Date().toISOString();
+      
+      const { data, error } = await supabase
+        .from('bets')
+        .insert({
+          user_id: bet.userId,
+          match_id: bet.matchId || null,
+          betting_house: bet.bettingHouse,
+          bet_amount: bet.betAmount,
+          odd: bet.odd,
+          potential_return: bet.potentialReturn,
+          bet_status: bet.betStatus,
+          bet_date: bet.betDate,
+          result_date: bet.resultDate || null,
+          notes: bet.notes || null,
+          created_at: now,
+          updated_at: now
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erro ao criar aposta:', error.message);
+        return null;
+      }
+
+      const newBet: Bet = {
+        id: data.id,
+        userId: data.user_id,
+        matchId: data.match_id,
+        bettingHouse: data.betting_house,
+        betAmount: data.bet_amount,
+        odd: data.odd,
+        potentialReturn: data.potential_return,
+        betStatus: data.bet_status,
+        betDate: data.bet_date,
+        resultDate: data.result_date,
+        notes: data.notes,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      debugLog('✅ Aposta criada:', newBet);
+      return newBet;
+    } catch (error) {
+      console.error('❌ Erro ao criar aposta:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Busca todas as apostas do usuário
+   */
+  getUserBets: async (userId: string): Promise<Bet[]> => {
+    try {
+      debugLog('📋 Buscando apostas do usuário:', userId);
+      const { data, error } = await supabase
+        .from('bets')
+        .select('*')
+        .eq('user_id', userId)
+        .order('bet_date', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar apostas:', error.message);
+        return [];
+      }
+
+      const bets: Bet[] = (data || []).map(db => ({
+        id: db.id,
+        userId: db.user_id,
+        matchId: db.match_id,
+        bettingHouse: db.betting_house,
+        betAmount: db.bet_amount,
+        odd: db.odd,
+        potentialReturn: db.potential_return,
+        betStatus: db.bet_status,
+        betDate: db.bet_date,
+        resultDate: db.result_date,
+        notes: db.notes,
+        createdAt: db.created_at,
+        updatedAt: db.updated_at
+      }));
+
+      debugLog('✅ Apostas carregadas:', bets);
+      return bets;
+    } catch (error) {
+      console.error('❌ Erro ao buscar apostas:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Atualiza uma aposta existente
+   */
+  updateBet: async (betId: string, updates: Partial<Omit<Bet, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Bet | null> => {
+    try {
+      debugLog('✏️ Atualizando aposta:', betId, updates);
+      const now = new Date().toISOString();
+
+      const updateData: Record<string, unknown> = {
+        updated_at: now
+      };
+
+      if (updates.bettingHouse) updateData.betting_house = updates.bettingHouse;
+      if (updates.betAmount !== undefined) updateData.bet_amount = updates.betAmount;
+      if (updates.odd !== undefined) updateData.odd = updates.odd;
+      if (updates.potentialReturn !== undefined) updateData.potential_return = updates.potentialReturn;
+      if (updates.betStatus) updateData.bet_status = updates.betStatus;
+      if (updates.betDate) updateData.bet_date = updates.betDate;
+      if (updates.resultDate) updateData.result_date = updates.resultDate;
+      if (updates.notes !== undefined) updateData.notes = updates.notes;
+
+      const { data, error } = await supabase
+        .from('bets')
+        .update(updateData)
+        .eq('id', betId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erro ao atualizar aposta:', error.message);
+        return null;
+      }
+
+      const updatedBet: Bet = {
+        id: data.id,
+        userId: data.user_id,
+        matchId: data.match_id,
+        bettingHouse: data.betting_house,
+        betAmount: data.bet_amount,
+        odd: data.odd,
+        potentialReturn: data.potential_return,
+        betStatus: data.bet_status,
+        betDate: data.bet_date,
+        resultDate: data.result_date,
+        notes: data.notes,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      debugLog('✅ Aposta atualizada:', updatedBet);
+      return updatedBet;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar aposta:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Deleta uma aposta
+   */
+  deleteBet: async (betId: string): Promise<boolean> => {
+    try {
+      debugLog('🗑️ Deletando aposta:', betId);
+      const { error } = await supabase
+        .from('bets')
+        .delete()
+        .eq('id', betId);
+
+      if (error) {
+        console.error('❌ Erro ao deletar aposta:', error.message);
+        return false;
+      }
+
+      debugLog('✅ Aposta deletada');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao deletar aposta:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Cria uma nova conta de caixa
+   */
+  createCashAccount: async (account: Omit<CashAccount, 'id' | 'createdAt' | 'updatedAt'>): Promise<CashAccount | null> => {
+    try {
+      debugLog('💰 Criando nova conta de caixa...', account);
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from('cash_accounts')
+        .insert({
+          user_id: account.userId,
+          betting_house: account.bettingHouse,
+          initial_balance: account.initialBalance,
+          created_at: now,
+          updated_at: now
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erro ao criar conta de caixa:', error.message);
+        return null;
+      }
+
+      const newAccount: CashAccount = {
+        id: data.id,
+        userId: data.user_id,
+        bettingHouse: data.betting_house,
+        initialBalance: data.initial_balance,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      debugLog('✅ Conta de caixa criada:', newAccount);
+      return newAccount;
+    } catch (error) {
+      console.error('❌ Erro ao criar conta de caixa:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Busca todas as contas de caixa do usuário
+   */
+  getUserCashAccounts: async (userId: string): Promise<CashAccount[]> => {
+    try {
+      debugLog('💰 Buscando contas de caixa do usuário:', userId);
+      const { data, error } = await supabase
+        .from('cash_accounts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro ao buscar contas de caixa:', error.message);
+        return [];
+      }
+
+      const accounts: CashAccount[] = (data || []).map(db => ({
+        id: db.id,
+        userId: db.user_id,
+        bettingHouse: db.betting_house,
+        initialBalance: db.initial_balance,
+        createdAt: db.created_at,
+        updatedAt: db.updated_at
+      }));
+
+      debugLog('✅ Contas de caixa carregadas:', accounts);
+      return accounts;
+    } catch (error) {
+      console.error('❌ Erro ao buscar contas de caixa:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Atualiza saldo inicial de uma conta
+   */
+  updateCashAccount: async (accountId: string, initialBalance: number): Promise<CashAccount | null> => {
+    try {
+      debugLog('✏️ Atualizando conta de caixa:', accountId, initialBalance);
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from('cash_accounts')
+        .update({ initial_balance: initialBalance, updated_at: now })
+        .eq('id', accountId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Erro ao atualizar conta de caixa:', error.message);
+        return null;
+      }
+
+      const updatedAccount: CashAccount = {
+        id: data.id,
+        userId: data.user_id,
+        bettingHouse: data.betting_house,
+        initialBalance: data.initial_balance,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      debugLog('✅ Conta de caixa atualizada:', updatedAccount);
+      return updatedAccount;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar conta de caixa:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Deleta uma conta de caixa
+   */
+  deleteCashAccount: async (accountId: string): Promise<boolean> => {
+    try {
+      debugLog('🗑️ Deletando conta de caixa:', accountId);
+      const { error } = await supabase
+        .from('cash_accounts')
+        .delete()
+        .eq('id', accountId);
+
+      if (error) {
+        console.error('❌ Erro ao deletar conta de caixa:', error.message);
+        return false;
+      }
+
+      debugLog('✅ Conta de caixa deletada');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao deletar conta de caixa:', error);
       return false;
     }
   }

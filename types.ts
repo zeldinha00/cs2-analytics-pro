@@ -111,3 +111,74 @@ export interface User {
   role: UserRole;
   createdAt: string;
 }
+
+// --- BETS TYPES ---
+
+export enum BettingHouse {
+  BET365 = 'BET365',
+  BETANO = 'BETANO',
+  SPORTINGBET = 'SPORTINGBET',
+  BETFAIR = 'BETFAIR',
+  RIVALO = 'RIVALO',
+  PINNACLE = 'PINNACLE',
+  UNIBET = 'UNIBET',
+  DAFABET = 'DAFABET',
+  OTHER = 'OTHER'
+}
+
+export enum BetStatus {
+  PENDING = 'PENDING',
+  WON = 'WON',
+  LOST = 'LOST',
+  CANCELLED = 'CANCELLED'
+}
+
+export interface Bet {
+  id: string;
+  userId: string;
+  matchId?: string;
+  bettingHouse: BettingHouse;
+  betAmount: number;
+  odd: number;
+  potentialReturn: number;
+  betStatus: BetStatus;
+  betDate: string;
+  resultDate?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DBBet {
+  id: string;
+  user_id: string;
+  match_id?: string;
+  betting_house: BettingHouse;
+  bet_amount: number;
+  odd: number;
+  potential_return: number;
+  bet_status: BetStatus;
+  bet_date: string;
+  result_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashAccount {
+  id: string;
+  userId: string;
+  bettingHouse: BettingHouse;
+  initialBalance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DBCashAccount {
+  id: string;
+  user_id: string;
+  betting_house: BettingHouse;
+  initial_balance: number;
+  created_at: string;
+  updated_at: string;
+}

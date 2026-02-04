@@ -12,6 +12,7 @@ const ImportDemo = lazy(() => import('./pages/ImportDemo'));
 const AdjustScores = lazy(() => import('./pages/AdjustScores'));
 const MatchDetail = lazy(() => import('./pages/MatchDetail'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
+const Bets = lazy(() => import('./pages/Bets'));
 const Login = lazy(() => import('./pages/Login'));
 import { AuthService } from './services/auth';
 import supabaseService from './services/supabaseService';
@@ -155,6 +156,12 @@ const App: React.FC = () => {
             <UserManagement />
           </Suspense>
         ) : <div className="text-red-500 font-bold p-8 text-center">Acesso Negado</div>;
+      case 'bets':
+        return (
+          <Suspense fallback={<div className="text-slate-400">Carregando...</div>}>
+            <Bets userId={user.id} />
+          </Suspense>
+        );
       case 'settings':
         return user?.role === 'ADMIN' ? (
           <div className="flex items-center justify-center h-96 text-slate-500">

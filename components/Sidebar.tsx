@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Gamepad2, UploadCloud, LogOut, Users, RotateCcw, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, UploadCloud, LogOut, Users, RotateCcw, BarChart3, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface SidebarProps {
@@ -31,6 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { id: 'matches', label: 'Partidas', icon: <Gamepad2 size={20} /> },
     { id: 'comparison', label: 'Comparação', icon: <BarChart3 size={20} /> },
+    { id: 'bets', label: 'Apostas', icon: <TrendingUp size={20} /> },
   ];
 
   // Admin only items
