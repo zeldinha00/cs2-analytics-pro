@@ -112,10 +112,30 @@ const App: React.FC = () => {
           </Suspense>
         );
       case 'comparison':
-        return (
+        return user?.isVip || user?.role === 'ADMIN' ? (
           <Suspense fallback={<div className="text-slate-400">Carregando...</div>}>
             <Comparison matches={matches} />
           </Suspense>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-96 text-center">
+            <div className="text-6xl mb-4">🔒</div>
+            <div className="text-2xl font-bold text-white mb-2">Recurso VIP</div>
+            <p className="text-slate-400">A página de Comparação é exclusiva para usuários VIP.</p>
+            <p className="text-slate-500 text-sm mt-2">Entre em contato com o administrador para obter acesso.</p>
+          </div>
+        );
+      case 'bets':
+        return user?.isVip || user?.role === 'ADMIN' ? (
+          <Suspense fallback={<div className="text-slate-400">Carregando...</div>}>
+            <Bets userId={user.id} />
+          </Suspense>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-96 text-center">
+            <div className="text-6xl mb-4">🔒</div>
+            <div className="text-2xl font-bold text-white mb-2">Recurso VIP</div>
+            <p className="text-slate-400">A página de Apostas é exclusiva para usuários VIP.</p>
+            <p className="text-slate-500 text-sm mt-2">Entre em contato com o administrador para obter acesso.</p>
+          </div>
         );
       case 'import':
         return user?.role === 'ADMIN' ? (
@@ -156,12 +176,6 @@ const App: React.FC = () => {
             <UserManagement />
           </Suspense>
         ) : <div className="text-red-500 font-bold p-8 text-center">Acesso Negado</div>;
-      case 'bets':
-        return (
-          <Suspense fallback={<div className="text-slate-400">Carregando...</div>}>
-            <Bets userId={user.id} />
-          </Suspense>
-        );
       case 'settings':
         return user?.role === 'ADMIN' ? (
           <div className="flex items-center justify-center h-96 text-slate-500">
@@ -192,9 +206,16 @@ const App: React.FC = () => {
         currentPage={selectedMatchId ? 'matches' : currentPage} 
         onNavigate={(page) => {
           const adminOnlyPages = ['import', 'adjust', 'users', 'settings'];
+          const vipOnlyPages = ['comparison', 'bets'];
+          
           if (adminOnlyPages.includes(page) && user?.role !== 'ADMIN') {
             console.warn('Acesso negado para página:', page);
             setAccessDenied('Acesso negado: área restrita a administradores.');
+            setCurrentPage('dashboard');
+            setTimeout(() => setAccessDenied(null), 3000);
+          } else if (vipOnlyPages.includes(page) && !user?.isVip && user?.role !== 'ADMIN') {
+            console.warn('Acesso negado para página VIP:', page);
+            setAccessDenied('Acesso negado: esta funcionalidade é exclusiva para usuários VIP.');
             setCurrentPage('dashboard');
             setTimeout(() => setAccessDenied(null), 3000);
           } else {
@@ -206,6 +227,7 @@ const App: React.FC = () => {
         setIsMobileOpen={setIsMobileOpen}
         userRole={user.role}
         userName={user.username}
+        isVip={user.isVip || user.role === 'ADMIN'}
         onLogout={handleLogout}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}

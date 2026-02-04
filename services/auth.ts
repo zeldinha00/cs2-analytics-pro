@@ -13,6 +13,7 @@ const seedAdmin = () => {
       username: 'admin',
       password: 'ZeldinhaDev', // Em um app real, isso seria um hash
       role: 'ADMIN',
+      isVip: true, // Admin é VIP por padrão
       createdAt: new Date().toISOString()
     };
     saveUsers([admin]);
@@ -58,6 +59,7 @@ export const AuthService = {
             id: userData.id,
             username: userData.username,
             role: userData.role,
+            isVip: userData.is_vip || false,
             createdAt: userData.created_at
           };
           localStorage.setItem(SESSION_KEY, JSON.stringify(user));
@@ -114,6 +116,7 @@ export const AuthService = {
       id: Date.now().toString(),
       username,
       role,
+      isVip: false, // Novos usuários não são VIP por padrão
       createdAt: new Date().toISOString()
     };
 
@@ -146,6 +149,7 @@ export const AuthService = {
             id: data.user.id,
             username,
             role,
+            is_vip: false,
             created_at: new Date().toISOString()
           }]);
         
@@ -177,6 +181,16 @@ export const AuthService = {
   getAllUsers: (): User[] => {
     const users = getUsers();
     return users.map(({ password, ...u }) => u as User);
+  },
+
+  getUserByUsername: (username: string): User | null => {
+    const users = getUsers();
+    const user = users.find(u => u.username === username);
+    if (user) {
+      const { password, ...u } = user;
+      return u as User;
+    }
+    return null;
   },
   
   deleteUser: (id: string) => {

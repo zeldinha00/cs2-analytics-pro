@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Gamepad2, UploadCloud, LogOut, Users, RotateCcw, BarChart3, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, UploadCloud, LogOut, Users, RotateCcw, BarChart3, ChevronLeft, ChevronRight, TrendingUp, Star } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface SidebarProps {
@@ -9,6 +9,7 @@ interface SidebarProps {
   setIsMobileOpen: (open: boolean) => void;
   userRole: UserRole;
   userName: string;
+  isVip: boolean;
   onLogout: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -21,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   setIsMobileOpen, 
   userRole, 
   userName,
+  isVip,
   onLogout,
   isCollapsed,
   onToggleCollapse
@@ -28,17 +30,17 @@ const Sidebar: React.FC<SidebarProps> = ({
   
   // Base items visible to everyone
   const baseItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { id: 'matches', label: 'Partidas', icon: <Gamepad2 size={20} /> },
-    { id: 'comparison', label: 'Comparação', icon: <BarChart3 size={20} /> },
-    { id: 'bets', label: 'Apostas', icon: <TrendingUp size={20} /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, requiresVip: false },
+    { id: 'matches', label: 'Partidas', icon: <Gamepad2 size={20} />, requiresVip: false },
+    { id: 'comparison', label: 'Comparação', icon: <BarChart3 size={20} />, requiresVip: true },
+    { id: 'bets', label: 'Apostas', icon: <TrendingUp size={20} />, requiresVip: true },
   ];
 
   // Admin only items
   const adminItems = [
-    { id: 'import', label: 'Importar Demo', icon: <UploadCloud size={20} /> },
-    { id: 'adjust', label: 'Ajustar Scores', icon: <RotateCcw size={20} /> },
-    { id: 'users', label: 'Usuários', icon: <Users size={20} /> },
+    { id: 'import', label: 'Importar Demo', icon: <UploadCloud size={20} />, requiresVip: false },
+    { id: 'adjust', label: 'Ajustar Scores', icon: <RotateCcw size={20} />, requiresVip: false },
+    { id: 'users', label: 'Usuários', icon: <Users size={20} />, requiresVip: false },
   ];
 
   const navItems = userRole === 'ADMIN' ? [...baseItems, ...adminItems] : baseItems;
@@ -112,39 +114,64 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   </div>
                 )}
-                {section.items.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onNavigate(item.id);
-                      setIsMobileOpen(false);
-                    }}
-                    className={`
-                      group relative w-full flex items-center gap-3 ${isCollapsed ? 'px-2' : 'px-3'} py-3 rounded-xl transition-all duration-200 font-medium
-                      border border-transparent
-                      ${currentPage === item.id 
-                        ? 'bg-blue-600/10 text-blue-300 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.2)]' 
-                        : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'}
-                    `}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <span className={`
-                      w-9 h-9 rounded-lg flex items-center justify-center
-                      ${currentPage === item.id ? 'bg-blue-500/20 text-blue-300' : 'bg-slate-800/70 text-slate-400'}
-                    `}>
-                      {item.icon}
-                    </span>
-                    {!isCollapsed && <span className="flex-1 text-left">{item.label}</span>}
-                    {currentPage === item.id && !isCollapsed && (
+                {section.items.map((item) => {
+                  const isLocked = item.requiresVip && !isVip;
+                  const canAccess = !isLocked;
+                  
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        if (canAccess) {
+                          onNavigate(item.id);
+                          setIsMobileOpen(false);
+                        }
+                      }}
+                      disabled={isLocked}
+                      className={`
+                        group relative w-full flex items-center gap-3 ${isCollapsed ? 'px-2' : 'px-3'} py-3 rounded-xl transition-all duration-200 font-medium
+                        border border-transparent
+                        ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}
+                        ${currentPage === item.id 
+                          ? 'bg-blue-600/10 text-blue-300 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.2)]' 
+                          : isLocked 
+                            ? 'text-slate-500' 
+                            : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'}
+                      `}
+                      title={isCollapsed ? (isLocked ? `${item.label} (VIP)` : item.label) : undefined}
+                    >
+                      <span className={`
+                        w-9 h-9 rounded-lg flex items-center justify-center relative
+                        ${currentPage === item.id ? 'bg-blue-500/20 text-blue-300' : isLocked ? 'bg-slate-800/30 text-slate-600' : 'bg-slate-800/70 text-slate-400'}
+                      `}>
+                        {item.icon}
+                        {item.requiresVip && (
+                          <Star 
+                            size={10} 
+                            className="absolute -top-1 -right-1 text-yellow-400 fill-yellow-400" 
+                          />
+                        )}
+                      </span>
+                      {!isCollapsed && (
+                        <>
+                          <span className="flex-1 text-left">{item.label}</span>
+                          {item.requiresVip && (
+                            <Star size={14} className="text-yellow-400 fill-yellow-400" />
+                          )}
+                        </>
+                      )}
+                      {currentPage === item.id && !isCollapsed && canAccess && (
                       <span className="w-1.5 h-6 rounded-full bg-blue-400" />
                     )}
                     {isCollapsed && (
                       <span className="pointer-events-none absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-900/95 border border-slate-700 px-3 py-1 text-xs text-slate-100 opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
                         {item.label}
+                        {item.requiresVip && !isVip && <span className="text-yellow-400 ml-2">(VIP)</span>}
                       </span>
                     )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             ))}
           </nav>
@@ -154,7 +181,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             {!isCollapsed && (
               <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-3 mb-3">
                 <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Usuário</div>
-                <div className="text-sm text-white font-semibold">{userName || 'Usuário'}</div>
+                <div className="text-sm text-white font-semibold flex items-center gap-2">
+                  {userName || 'Usuário'}
+                  {isVip && (
+                    <span className="flex items-center gap-1 text-yellow-400 text-xs">
+                      <Star size={12} className="fill-yellow-400" />
+                      VIP
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             <button 

@@ -109,6 +109,7 @@ export interface User {
   username: string;
   password?: string; // Optional because we might not return it in listings
   role: UserRole;
+  isVip: boolean; // VIP users have access to Comparison and Bets
   createdAt: string;
 }
 

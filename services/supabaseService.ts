@@ -1051,6 +1051,33 @@ export const supabaseService = {
       console.error('❌ Erro ao deletar conta de caixa:', error);
       return false;
     }
+  },
+
+  // ========== USER MANAGEMENT ==========
+
+  /**
+   * Atualiza o status VIP de um usuário
+   */
+  updateUserVipStatus: async (userId: string, isVip: boolean): Promise<boolean> => {
+    try {
+      debugLog(`${isVip ? '⭐' : '👤'} Atualizando status VIP do usuário ${userId} para: ${isVip}`);
+      
+      const { error } = await supabase
+        .from('users')
+        .update({ is_vip: isVip })
+        .eq('id', userId);
+
+      if (error) {
+        console.error('❌ Erro ao atualizar status VIP:', error.message);
+        return false;
+      }
+
+      debugLog(`✅ Status VIP atualizado para o usuário ${userId}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar status VIP:', error);
+      return false;
+    }
   }
 };
 

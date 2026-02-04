@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { AuthService } from '../services/auth';
-import { UserPlus, Trash2, Shield, User as UserIcon } from 'lucide-react';
+import { UserPlus, Trash2, Shield, User as UserIcon, Star } from 'lucide-react';
 import supabase from '../services/supabase';
+import supabaseService from '../services/supabaseService';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -11,11 +12,13 @@ const UserManagement: React.FC = () => {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editUsername, setEditUsername] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('USER');
+  const [editIsVip, setEditIsVip] = useState(false);
   
   // Form State
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('USER');
+  const [newIsVip, setNewIsVip] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -27,7 +30,7 @@ const UserManagement: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, role, created_at')
+        .select('id, username, role, is_vip, created_at')
         .order('created_at', { ascending: false });
 
       if (!error && data) {
@@ -35,6 +38,7 @@ const UserManagement: React.FC = () => {
           id: u.id,
           username: u.username,
           role: u.role as UserRole,
+          isVip: u.is_vip || false,
           createdAt: u.created_at
         }));
         setUsers(mapped);
@@ -63,9 +67,19 @@ const UserManagement: React.FC = () => {
     try {
       await AuthService.createUser(newUsername, newPassword, newRole);
       
+      // Se for VIP, atualizar no Supabase
+      if (newIsVip) {
+        const userData = AuthService.getUserByUsername(newUsername);
+        if (userData) {
+          await supabaseService.updateUserVipStatus(userData.id, true);
+        }
+      }
+      
       // Sucesso - limpar form
       setNewUsername('');
       setNewPassword('');
+      setNewRole('USER');
+      setNewIsVip(false);
       setShowAddForm(false);
       await loadUsers();
       await checkSupabase(); // Recheck Supabase status after creation
@@ -115,12 +129,14 @@ const UserManagement: React.FC = () => {
     setEditingUserId(user.id);
     setEditUsername(user.username);
     setEditRole(user.role);
+    setEditIsVip(user.isVip || false);
   };
 
   const cancelEditUser = () => {
     setEditingUserId(null);
     setEditUsername('');
     setEditRole('USER');
+    setEditIsVip(false);
   };
 
   const saveEditUser = async (userId: string) => {
@@ -130,12 +146,21 @@ const UserManagement: React.FC = () => {
         .update({
           username: editUsername.trim(),
           role: editRole,
+          is_vip: editIsVip,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
 
       if (error) {
         console.warn('Falha ao atualizar no Supabase:', error.message);
+      }
+
+      // Também atualizar o status VIP se necessário
+      if (supabaseOnline) {
+        const currentUser = users.find(u => u.id === userId);
+        if (currentUser && currentUser.isVip !== editIsVip) {
+          await supabaseService.updateUserVipStatus(userId, editIsVip);
+        }
       }
 
       await loadUsers();
@@ -172,42 +197,57 @@ const UserManagement: React.FC = () => {
       {showAddForm && (
         <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6 animate-fade-in">
           <h3 className="text-white font-semibold mb-4">Criar Nova Credencial</h3>
-          <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Usuário</label>
+          <form onSubmit={handleCreateUser} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Usuário</label>
+                <input 
+                  type="text" 
+                  value={newUsername}
+                  onChange={e => setNewUsername(e.target.value)}
+                  className="w-full bg-slate-900/70 border border-slate-700 text-white px-3 py-2.5 rounded-xl focus:border-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Senha</label>
+                <input 
+                  type="password" 
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="w-full bg-slate-900/70 border border-slate-700 text-white px-3 py-2.5 rounded-xl focus:border-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Função</label>
+                <select 
+                  value={newRole}
+                  onChange={e => setNewRole(e.target.value as UserRole)}
+                  className="w-full bg-slate-900/70 border border-slate-700 text-white px-3 py-2.5 rounded-xl focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="USER">Usuário (Leitura)</option>
+                  <option value="ADMIN">Admin (Total)</option>
+                </select>
+              </div>
+              <div>
+                <button type="submit" className="w-full px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-medium transition-colors">
+                  Salvar
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <input 
-                type="text" 
-                value={newUsername}
-                onChange={e => setNewUsername(e.target.value)}
-                className="w-full bg-slate-900/70 border border-slate-700 text-white px-3 py-2.5 rounded-xl focus:border-blue-500 focus:outline-none"
-                required
+                type="checkbox" 
+                id="newVip"
+                checked={newIsVip}
+                onChange={e => setNewIsVip(e.target.checked)}
+                className="w-4 h-4 bg-slate-800 border border-slate-600 rounded cursor-pointer accent-yellow-500"
               />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Senha</label>
-              <input 
-                type="password" 
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                className="w-full bg-slate-900/70 border border-slate-700 text-white px-3 py-2.5 rounded-xl focus:border-blue-500 focus:outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Função</label>
-              <select 
-                value={newRole}
-                onChange={e => setNewRole(e.target.value as UserRole)}
-                className="w-full bg-slate-900/70 border border-slate-700 text-white px-3 py-2.5 rounded-xl focus:border-blue-500 focus:outline-none"
-              >
-                <option value="USER">Usuário (Leitura)</option>
-                <option value="ADMIN">Admin (Total)</option>
-              </select>
-            </div>
-            <div>
-              <button type="submit" className="w-full px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-medium transition-colors">
-                Salvar
-              </button>
+              <label htmlFor="newVip" className="text-sm text-slate-300 cursor-pointer flex items-center gap-1">
+                <Star size={14} className="text-yellow-500" />
+                Usuário VIP (acesso a Comparação e Apostas)
+              </label>
             </div>
           </form>
           {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
@@ -221,6 +261,7 @@ const UserManagement: React.FC = () => {
             <tr className="bg-slate-900/60 border-b border-slate-800 text-xs uppercase font-semibold text-slate-400">
               <th className="py-3 px-6">Usuário</th>
               <th className="py-3 px-6">Função</th>
+              <th className="py-3 px-6">VIP</th>
               <th className="py-3 px-6">Criado em</th>
               <th className="py-3 px-6 text-right">Ações</th>
             </tr>
@@ -264,6 +305,28 @@ const UserManagement: React.FC = () => {
                       {user.role === 'ADMIN' ? <Shield size={10} /> : <UserIcon size={10} />}
                       {user.role}
                     </span>
+                  )}
+                </td>
+                <td className="py-4 px-6">
+                  {editingUserId === user.id ? (
+                    <input 
+                      type="checkbox" 
+                      checked={editIsVip}
+                      onChange={e => setEditIsVip(e.target.checked)}
+                      className="w-4 h-4 bg-slate-800 border border-slate-600 rounded cursor-pointer accent-yellow-500"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {user.isVip && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                          <Star size={10} />
+                          VIP
+                        </span>
+                      )}
+                      {!user.isVip && (
+                        <span className="text-slate-500 text-xs">-</span>
+                      )}
+                    </div>
                   )}
                 </td>
                 <td className="py-4 px-6 text-slate-400 text-sm">
