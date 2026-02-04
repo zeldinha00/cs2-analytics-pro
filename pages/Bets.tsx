@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, Edit2, Save, X, Plus, TrendingUp, TrendingDown, DollarSign, Target, BarChart3, PieChart } from 'lucide-react';
 import supabaseService from '../services/supabaseService';
-import { Bet, BettingHouse, BetStatus, CashAccount } from '../types';
+import { Bet, BetStatus, CashAccount } from '../types';
 
 interface BetsProps {
   userId: string;
@@ -18,7 +18,7 @@ export default function Bets({ userId }: BetsProps) {
 
   // Form states
   const [newBet, setNewBet] = useState({
-    bettingHouse: BettingHouse.BET365,
+    bettingHouse: '',
     betAmount: '',
     odd: '',
     betStatus: BetStatus.PENDING,
@@ -26,7 +26,7 @@ export default function Bets({ userId }: BetsProps) {
   });
 
   const [newCash, setNewCash] = useState({
-    bettingHouse: BettingHouse.BET365,
+    bettingHouse: '',
     initialBalance: ''
   });
 
@@ -49,8 +49,8 @@ export default function Bets({ userId }: BetsProps) {
   };
 
   const handleAddBet = async () => {
-    if (!newBet.betAmount || !newBet.odd) {
-      alert('Preencha todos os campos obrigatórios');
+    if (!newBet.betAmount || !newBet.odd || !newBet.bettingHouse.trim()) {
+      alert('Preencha todos os campos obrigatórios (Casa de Apostas, Valor e Odd)');
       return;
     }
 
@@ -60,7 +60,7 @@ export default function Bets({ userId }: BetsProps) {
 
     const createdBet = await supabaseService.createBet({
       userId,
-      bettingHouse: newBet.bettingHouse,
+      bettingHouse: newBet.bettingHouse.trim().toUpperCase(),
       betAmount,
       odd,
       potentialReturn,
@@ -72,7 +72,7 @@ export default function Bets({ userId }: BetsProps) {
     if (createdBet) {
       setBets([createdBet, ...bets]);
       setNewBet({
-        bettingHouse: BettingHouse.BET365,
+        bettingHouse: '',
         betAmount: '',
         odd: '',
         betStatus: BetStatus.PENDING,
@@ -83,7 +83,7 @@ export default function Bets({ userId }: BetsProps) {
   };
 
   const handleUpdateBet = async (betId: string) => {
-    if (!editBetData.betAmount || !editBetData.odd) {
+    if (!editBetData.betAmount || !editBetData.odd || !editBetData.bettingHouse?.trim()) {
       alert('Preencha todos os campos obrigatórios');
       return;
     }
@@ -111,13 +111,14 @@ export default function Bets({ userId }: BetsProps) {
   };
 
   const handleAddCashAccount = async () => {
-    if (!newCash.initialBalance) {
-      alert('Informe o saldo inicial');
+    if (!newCash.initialBalance || !newCash.bettingHouse.trim()) {
+      alert('Informe a casa de apostas e o saldo inicial');
       return;
     }
 
     // Verificar se já existe conta para esta casa
-    const existing = cashAccounts.find(c => c.bettingHouse === newCash.bettingHouse);
+    const normalizedHouse = newCash.bettingHouse.trim().toUpperCase();
+    const existing = cashAccounts.find(c => c.bettingHouse.toUpperCase() === normalizedHouse);
     if (existing) {
       alert('Você já tem uma conta registrada para esta casa de apostas');
       return;
@@ -125,14 +126,14 @@ export default function Bets({ userId }: BetsProps) {
 
     const created = await supabaseService.createCashAccount({
       userId,
-      bettingHouse: newCash.bettingHouse,
+      bettingHouse: normalizedHouse,
       initialBalance: parseFloat(newCash.initialBalance)
     });
 
     if (created) {
       setCashAccounts([created, ...cashAccounts]);
       setNewCash({
-        bettingHouse: BettingHouse.BET365,
+        bettingHouse: '',
         initialBalance: ''
       });
       setShowNewCashForm(false);
@@ -156,7 +157,7 @@ export default function Bets({ userId }: BetsProps) {
     }
   };
 
-  const calculateMetrics = (houseFilter?: BettingHouse) => {
+  const calculateMetrics = (houseFilter?: string) => {
     const filtered = houseFilter ? bets.filter(b => b.bettingHouse === houseFilter) : bets;
 
     const totalBets = filtered.length;
@@ -343,15 +344,13 @@ export default function Bets({ userId }: BetsProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Casa de Apostas</label>
-                  <select
+                  <input
+                    type="text"
+                    placeholder="Ex: BET365, BETANO, PINNACLE..."
                     value={newCash.bettingHouse}
-                    onChange={(e) => setNewCash({ ...newCash, bettingHouse: e.target.value as BettingHouse })}
-                    className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition"
-                  >
-                    {Object.values(BettingHouse).map(house => (
-                    <option key={house} value={house}>{house}</option>
-                  ))}
-                </select>
+                    onChange={(e) => setNewCash({ ...newCash, bettingHouse: e.target.value })}
+                    className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition placeholder:text-slate-500"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Saldo Inicial (R$)</label>
@@ -537,71 +536,96 @@ export default function Bets({ userId }: BetsProps) {
 
           {/* Novo Formulário de Aposta */}
           {showNewBetForm && (
-            <div className="bg-slate-700 rounded-lg p-6 mb-6 border border-slate-600">
-              <h3 className="text-lg font-semibold text-white mb-4">Registrar Nova Aposta</h3>
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 mb-6 border border-slate-700 shadow-xl">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Plus size={20} className="text-blue-400" />
+                Registrar Nova Aposta
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <select
-                  value={newBet.bettingHouse}
-                  onChange={(e) => setNewBet({ ...newBet, bettingHouse: e.target.value as BettingHouse })}
-                  className="bg-slate-600 text-white px-4 py-2 rounded border border-slate-500"
-                >
-                  {Object.values(BettingHouse).map(house => (
-                    <option key={house} value={house}>{house}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Valor Apostado"
-                  value={newBet.betAmount}
-                  onChange={(e) => setNewBet({ ...newBet, betAmount: e.target.value })}
-                  className="bg-slate-600 text-white px-4 py-2 rounded border border-slate-500"
-                  step="0.01"
-                />
-                <input
-                  type="number"
-                  placeholder="Odd"
-                  value={newBet.odd}
-                  onChange={(e) => setNewBet({ ...newBet, odd: e.target.value })}
-                  className="bg-slate-600 text-white px-4 py-2 rounded border border-slate-500"
-                  step="0.01"
-                />
-                <select
-                  value={newBet.betStatus}
-                  onChange={(e) => setNewBet({ ...newBet, betStatus: e.target.value as BetStatus })}
-                  className="bg-slate-600 text-white px-4 py-2 rounded border border-slate-500"
-                >
-                  {Object.values(BetStatus).map(status => (
-                    <option key={status} value={status}>
-                      {status === BetStatus.PENDING ? 'Pendente' : status === BetStatus.WON ? 'Ganhou' : status === BetStatus.LOST ? 'Perdeu' : 'Cancelada'}
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Casa de Apostas</label>
+                  {cashAccounts.length === 0 ? (
+                    <div className="w-full bg-slate-700/50 text-slate-400 px-4 py-3 rounded-lg border border-slate-600 flex items-center justify-center text-sm">
+                      Crie uma conta primeiro
+                    </div>
+                  ) : (
+                    <select
+                      value={newBet.bettingHouse}
+                      onChange={(e) => setNewBet({ ...newBet, bettingHouse: e.target.value })}
+                      className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition"
+                    >
+                      <option value="">Selecione uma casa</option>
+                      {cashAccounts.map((account) => (
+                        <option key={account.id} value={account.bettingHouse}>
+                          {account.bettingHouse}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Valor Apostado (R$)</label>
+                  <input
+                    type="number"
+                    placeholder="100.00"
+                    value={newBet.betAmount}
+                    onChange={(e) => setNewBet({ ...newBet, betAmount: e.target.value })}
+                    className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Odd</label>
+                  <input
+                    type="number"
+                    placeholder="2.00"
+                    value={newBet.odd}
+                    onChange={(e) => setNewBet({ ...newBet, odd: e.target.value })}
+                    className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Status</label>
+                  <select
+                    value={newBet.betStatus}
+                    onChange={(e) => setNewBet({ ...newBet, betStatus: e.target.value as BetStatus })}
+                    className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition"
+                  >
+                    {Object.values(BetStatus).map(status => (
+                      <option key={status} value={status}>
+                        {status === BetStatus.PENDING ? 'Pendente' : status === BetStatus.WON ? 'Ganhou' : status === BetStatus.LOST ? 'Perdeu' : 'Cancelada'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="mb-4">
+                <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Notas (Opcional)</label>
                 <input
                   type="text"
-                  placeholder="Notas (opcional)"
+                  placeholder="Observações sobre a aposta..."
                   value={newBet.notes}
                   onChange={(e) => setNewBet({ ...newBet, notes: e.target.value })}
-                  className="w-full bg-slate-600 text-white px-4 py-2 rounded border border-slate-500"
+                  className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none transition placeholder:text-slate-500"
                 />
               </div>
               {newBet.betAmount && newBet.odd && (
-                <div className="bg-slate-800 p-3 rounded mb-4 text-sm">
-                  <span className="text-slate-400">Retorno Potencial: </span>
-                  <span className="text-green-400 font-bold">R$ {(parseFloat(newBet.betAmount) * parseFloat(newBet.odd)).toFixed(2)}</span>
+                <div className="bg-slate-700/50 border border-slate-600 p-4 rounded-xl mb-4">
+                  <span className="text-slate-400">💰 Retorno Potencial: </span>
+                  <span className="text-green-400 font-bold text-xl">R$ {(parseFloat(newBet.betAmount) * parseFloat(newBet.odd)).toFixed(2)}</span>
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={handleAddBet}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition"
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-5 py-2.5 rounded-lg transition shadow-lg"
                 >
-                  <Save size={18} /> Salvar
+                  <Save size={18} /> Salvar Aposta
                 </button>
                 <button
                   onClick={() => setShowNewBetForm(false)}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                  className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-5 py-2.5 rounded-lg transition border border-slate-600"
                 >
                   <X size={18} /> Cancelar
                 </button>
@@ -636,11 +660,13 @@ export default function Bets({ userId }: BetsProps) {
                           <td className="py-3 px-4">
                             <select
                               value={editBetData.bettingHouse}
-                              onChange={(e) => setEditBetData({ ...editBetData, bettingHouse: e.target.value as BettingHouse })}
-                              className="bg-slate-600 text-white px-2 py-1 rounded text-xs"
+                              onChange={(e) => setEditBetData({ ...editBetData, bettingHouse: e.target.value })}
+                              className="bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 text-sm w-32"
                             >
-                              {Object.values(BettingHouse).map(house => (
-                                <option key={house} value={house}>{house}</option>
+                              {cashAccounts.map((account) => (
+                                <option key={account.id} value={account.bettingHouse}>
+                                  {account.bettingHouse}
+                                </option>
                               ))}
                             </select>
                           </td>
@@ -649,7 +675,7 @@ export default function Bets({ userId }: BetsProps) {
                               type="number"
                               value={editBetData.betAmount}
                               onChange={(e) => setEditBetData({ ...editBetData, betAmount: parseFloat(e.target.value) })}
-                              className="bg-slate-600 text-white px-2 py-1 rounded text-xs w-20"
+                              className="bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 text-sm w-24"
                               step="0.01"
                             />
                           </td>
@@ -658,7 +684,7 @@ export default function Bets({ userId }: BetsProps) {
                               type="number"
                               value={editBetData.odd}
                               onChange={(e) => setEditBetData({ ...editBetData, odd: parseFloat(e.target.value) })}
-                              className="bg-slate-600 text-white px-2 py-1 rounded text-xs w-20"
+                              className="bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 text-sm w-24"
                               step="0.01"
                             />
                           </td>
@@ -669,7 +695,7 @@ export default function Bets({ userId }: BetsProps) {
                             <select
                               value={editBetData.betStatus}
                               onChange={(e) => setEditBetData({ ...editBetData, betStatus: e.target.value as BetStatus })}
-                              className="bg-slate-600 text-white px-2 py-1 rounded text-xs"
+                              className="bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 text-sm"
                             >
                               {Object.values(BetStatus).map(status => (
                                 <option key={status} value={status}>

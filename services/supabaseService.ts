@@ -1,5 +1,5 @@
 import supabase from './supabase';
-import { Match, Round, Team, TeamSide, RoundEndReason, DBMatch, DBTeam, DBRound, Bet, DBBet, CashAccount, DBCashAccount, BettingHouse, BetStatus } from '../types';
+import { Match, Round, Team, TeamSide, RoundEndReason, DBMatch, DBTeam, DBRound, Bet, DBBet, CashAccount, DBCashAccount, BetStatus } from '../types';
 
 // Toggle para logs verbosos; defina VITE_DEBUG_LOGS=true para ver logs no console
 const DEBUG = import.meta.env.VITE_DEBUG_LOGS === 'true';
