@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Trash2, Edit2, Save, X, Plus, TrendingUp, TrendingDown, DollarSign, Target, BarChart3, PieChart } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Trash2, Edit2, Save, X, Plus, TrendingUp, TrendingDown, DollarSign, Target, BarChart3, PieChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import supabaseService from '../services/supabaseService';
 import { Bet, BetStatus, CashAccount } from '../types';
 
@@ -15,6 +15,9 @@ export default function Bets({ userId }: BetsProps) {
   const [editingBetId, setEditingBetId] = useState<string | null>(null);
   const [editingCashId, setEditingCashId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Carrossel ref
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   // Form states
   const [newBet, setNewBet] = useState({
@@ -157,6 +160,18 @@ export default function Bets({ userId }: BetsProps) {
     }
   };
 
+  // Funções de navegação do carrossel
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const scrollAmount = 416; // 384px (width) + 32px (gap)
+      if (direction === 'left') {
+        carouselRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      } else {
+        carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+  };
+
   const calculateMetrics = (houseFilter?: string) => {
     const filtered = houseFilter ? bets.filter(b => b.bettingHouse === houseFilter) : bets;
 
@@ -234,7 +249,7 @@ export default function Bets({ userId }: BetsProps) {
                 <DollarSign size={18} className="text-blue-400" />
                 <span className="text-xs text-slate-400 uppercase font-semibold">Capital Inicial</span>
               </div>
-              <p className="text-2xl font-bold text-white">R$ {totalInitialBalance.toFixed(2)}</p>
+              <p className="font-bold text-base whitespace-nowrap overflow-hidden text-ellipsis text-white">R$ {totalInitialBalance.toFixed(2)}</p>
             </div>
 
             {/* Total Apostado */}
@@ -243,7 +258,7 @@ export default function Bets({ userId }: BetsProps) {
                 <Target size={18} className="text-purple-400" />
                 <span className="text-xs text-slate-400 uppercase font-semibold">Total Apostado</span>
               </div>
-              <p className="text-2xl font-bold text-white">R$ {globalMetrics.totalStaked}</p>
+              <p className="font-bold text-base whitespace-nowrap overflow-hidden text-ellipsis text-white">R$ {globalMetrics.totalStaked}</p>
             </div>
 
             {/* Lucro/Prejuízo */}
@@ -252,23 +267,25 @@ export default function Bets({ userId }: BetsProps) {
                 {totalProfit >= 0 ? <TrendingUp size={18} className="text-green-400" /> : <TrendingDown size={18} className="text-red-400" />}
                 <span className="text-xs text-slate-400 uppercase font-semibold">Lucro/Prejuízo</span>
               </div>
-              <p className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <p className={`font-bold text-base whitespace-nowrap overflow-hidden text-ellipsis ${totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {totalProfit >= 0 ? '+' : ''}R$ {globalMetrics.profit}
               </p>
             </div>
 
             {/* Saldo Final */}
             <div className={`bg-gradient-to-br ${totalProfit >= 0 ? 'from-green-600/20 to-emerald-600/20 border-green-500' : 'from-red-600/20 to-rose-600/20 border-red-500'} rounded-xl p-4 border-2 shadow-lg`}>
-              <div className="flex items-center gap-2 mb-2">
-                <BarChart3 size={18} className={totalProfit >= 0 ? 'text-green-400' : 'text-red-400'} />
-                <span className="text-xs text-slate-300 uppercase font-bold">💰 Saldo Final</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <BarChart3 size={18} className={totalProfit >= 0 ? 'text-green-400' : 'text-red-400'} />
+                  <span className="text-xs text-slate-300 uppercase font-bold">💰 Saldo Final</span>
+                </div>
+                <p className={`font-bold text-base whitespace-nowrap overflow-hidden text-ellipsis ${totalProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                  R$ {totalFinalBalance.toFixed(2)}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {totalProfit >= 0 ? '↗' : '↘'} {((totalProfit / totalInitialBalance) * 100).toFixed(1)}% do inicial
+                </p>
               </div>
-              <p className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                R$ {totalFinalBalance.toFixed(2)}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {totalProfit >= 0 ? '↗' : '↘'} {((totalProfit / totalInitialBalance) * 100).toFixed(1)}% do inicial
-              </p>
             </div>
 
             {/* ROI */}
@@ -277,7 +294,7 @@ export default function Bets({ userId }: BetsProps) {
                 <BarChart3 size={18} className={parseFloat(globalMetrics.roi) >= 0 ? 'text-green-400' : 'text-red-400'} />
                 <span className="text-xs text-slate-400 uppercase font-semibold">ROI</span>
               </div>
-              <p className={`text-2xl font-bold ${parseFloat(globalMetrics.roi) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <p className={`font-bold text-base whitespace-nowrap overflow-hidden text-ellipsis ${parseFloat(globalMetrics.roi) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {parseFloat(globalMetrics.roi) >= 0 ? '+' : ''}{globalMetrics.roi}%
               </p>
             </div>
@@ -288,7 +305,7 @@ export default function Bets({ userId }: BetsProps) {
                 <Target size={18} className="text-yellow-400" />
                 <span className="text-xs text-slate-400 uppercase font-semibold">Taxa Acerto</span>
               </div>
-              <p className="text-2xl font-bold text-yellow-400">{globalMetrics.hitRate}%</p>
+              <p className="font-bold text-base whitespace-nowrap overflow-hidden text-ellipsis text-yellow-400">{globalMetrics.hitRate}%</p>
               <p className="text-xs text-slate-400 mt-1">
                 {globalMetrics.wonBets}V / {globalMetrics.lostBets}D
               </p>
@@ -381,23 +398,38 @@ export default function Bets({ userId }: BetsProps) {
             </div>
           )}
 
-          {/* Cards de Contas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cashAccounts.length === 0 ? (
-              <div className="col-span-full bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-12 text-center border-2 border-dashed border-slate-700">
-                <DollarSign size={48} className="text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400 text-lg font-semibold mb-2">Nenhuma conta registrada</p>
-                <p className="text-slate-500 text-sm">Crie sua primeira conta para começar a rastrear apostas!</p>
-              </div>
-            ) : (
-              cashAccounts.map(account => {
+          {/* Cards de Contas - Carrossel */}
+          {cashAccounts.length === 0 ? (
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-12 text-center border-2 border-dashed border-slate-700">
+              <DollarSign size={48} className="text-slate-600 mx-auto mb-4" />
+              <p className="text-slate-400 text-lg font-semibold mb-2">Nenhuma conta registrada</p>
+              <p className="text-slate-500 text-sm">Crie sua primeira conta para começar a rastrear apostas!</p>
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Botões de Navegação */}
+              <button
+                onClick={() => scrollCarousel('left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 z-10 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white p-2.5 rounded-full transition shadow-lg hover:shadow-xl hidden md:flex items-center justify-center"
+                title="Anterior"
+              >
+                <ChevronLeft size={24} />
+              </button>
+
+              <div 
+                ref={carouselRef}
+                className="overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth"
+                style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgb(55, 65, 81) rgb(30, 41, 59)' }}
+              >
+                <div className="flex gap-6 w-max px-6">
+                  {cashAccounts.map(account => {
                 const metrics = calculateMetrics(account.bettingHouse);
                 const profit = parseFloat(metrics.profit);
                 const roi = parseFloat(metrics.roi);
                 const finalBalance = account.initialBalance + profit;
 
                 return (
-                  <div key={account.id} className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-700 hover:border-blue-500 transition shadow-xl hover:shadow-2xl">
+                  <div key={account.id} className="flex-shrink-0 w-96 snap-center bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-700 hover:border-blue-500 transition shadow-xl hover:shadow-2xl">
                     {editingCashId === account.id ? (
                       <div>
                         <label className="block text-xs text-slate-400 mb-2 uppercase font-semibold">Saldo Inicial</label>
@@ -480,18 +512,18 @@ export default function Bets({ userId }: BetsProps) {
 
                           {/* SALDO FINAL - DESTAQUE */}
                           <div className={`rounded-xl p-4 border-2 shadow-lg ${finalBalance >= account.initialBalance ? 'bg-gradient-to-br from-green-600/20 to-emerald-600/20 border-green-500' : 'bg-gradient-to-br from-red-600/20 to-rose-600/20 border-red-500'}`}>
-                            <div className="flex items-center justify-between">
-                              <div>
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1 min-w-0">
                                 <p className="text-xs text-slate-300 uppercase font-bold mb-1 flex items-center gap-1">
                                   <BarChart3 size={14} />
                                   💰 Saldo Final
                                 </p>
-                                <p className={`text-2xl font-bold ${finalBalance >= account.initialBalance ? 'text-green-300' : 'text-red-300'}`}>
+                                <p className={`font-bold text-lg whitespace-nowrap overflow-hidden text-ellipsis ${finalBalance >= account.initialBalance ? 'text-green-300' : 'text-red-300'}`}>
                                   R$ {finalBalance.toFixed(2)}
                                 </p>
                               </div>
-                              <div className="text-right">
-                                <p className={`text-xs font-semibold ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              <div className="text-right flex-shrink-0">
+                                <p className={`text-xs font-semibold whitespace-nowrap ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                   {roi >= 0 ? '↗' : '↘'} {roi >= 0 ? '+' : ''}{roi}%
                                 </p>
                                 <p className="text-xs text-slate-400">ROI</p>
@@ -514,9 +546,20 @@ export default function Bets({ userId }: BetsProps) {
                     )}
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+              </div>
+            </div>
+
+              {/* Botão Próximo */}
+              <button
+                onClick={() => scrollCarousel('right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 z-10 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white p-2.5 rounded-full transition shadow-lg hover:shadow-xl hidden md:flex items-center justify-center"
+                title="Próximo"
+              >
+                <ChevronRight size={24} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Divider */}

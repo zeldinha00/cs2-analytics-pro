@@ -1,0 +1,37 @@
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(30, 41, 59);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(55, 65, 81);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(71, 85, 105);
+}
+
+/* Carrousel scroll-snap classes */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Tailwind scrollbar utilities fallback */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+
+.scrollbar-thumb-slate-700::-webkit-scrollbar-thumb {
+  background-color: rgb(55, 65, 81);
+}
+
+.scrollbar-track-slate-800::-webkit-scrollbar-track {
+  background-color: rgb(30, 41, 59);
+}
