@@ -110,7 +110,7 @@ const AdjustScores: React.FC<AdjustScoresProps> = ({ matches, onUpdate }) => {
   };
 
   const handleDelete = async () => {
-    if (!selectedMatchId) return;
+    if (!selectedMatchId) return;''
 
     try {
       setLoading(true);

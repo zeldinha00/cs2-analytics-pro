@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Match, RoundEndReason, TeamSide } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Swords, Map, Filter, Sparkles, Crown, Zap } from 'lucide-react';
+import { Swords, Map, Filter, Sparkles, Crown, Zap, TrendingUp, TrendingDown, Scale } from 'lucide-react';
 
 interface ComparisonProps {
   matches: Match[];
@@ -180,38 +180,99 @@ const Comparison: React.FC<ComparisonProps> = ({ matches }) => {
   const teamAMetrics = buildMetrics(teamAStats);
   const teamBMetrics = buildMetrics(teamBStats);
 
-  const comparisonData = [
-    { metric: 'Win rate (rounds)', [teamA || 'Time A']: teamAMetrics.roundWinRate, [teamB || 'Time B']: teamBMetrics.roundWinRate },
-    { metric: 'Pistol win %', [teamA || 'Time A']: teamAMetrics.pistolWinRate, [teamB || 'Time B']: teamBMetrics.pistolWinRate },
-    { metric: 'Plant rate (T)', [teamA || 'Time A']: teamAMetrics.plantRate, [teamB || 'Time B']: teamBMetrics.plantRate },
-    { metric: 'Detonation rate (T)', [teamA || 'Time A']: teamAMetrics.detonationRate, [teamB || 'Time B']: teamBMetrics.detonationRate },
-    { metric: 'Defuse rate (CT)', [teamA || 'Time A']: teamAMetrics.defuseRate, [teamB || 'Time B']: teamBMetrics.defuseRate },
-    { metric: 'Kills médios/round', [teamA || 'Time A']: teamAMetrics.avgKills, [teamB || 'Time B']: teamBMetrics.avgKills },
+  const metricRows = [
+    { key: 'roundWinRate', label: 'Win rate (rounds)', format: '%', a: teamAMetrics.roundWinRate, b: teamBMetrics.roundWinRate },
+    { key: 'pistolWinRate', label: 'Pistol win %', format: '%', a: teamAMetrics.pistolWinRate, b: teamBMetrics.pistolWinRate },
+    { key: 'plantRate', label: 'Plant rate (T)', format: '%', a: teamAMetrics.plantRate, b: teamBMetrics.plantRate },
+    { key: 'detonationRate', label: 'Detonation rate (T)', format: '%', a: teamAMetrics.detonationRate, b: teamBMetrics.detonationRate },
+    { key: 'defuseRate', label: 'Defuse rate (CT)', format: '%', a: teamAMetrics.defuseRate, b: teamBMetrics.defuseRate },
+    { key: 'avgKills', label: 'Kills médios/round', format: '', a: teamAMetrics.avgKills, b: teamBMetrics.avgKills },
   ];
 
-  const insights = useMemo(() => {
-    const pickLeader = (a: number, b: number, metric: string, suffix = '%') => {
-      if (!teamA || !teamB) return null;
-      if (a === b) return {
-        title: `Equilíbrio em ${metric}`,
-        detail: `${teamA} e ${teamB} estão empatados (${a.toFixed(1)}${suffix}).`
-      };
-      const leader = a > b ? teamA : teamB;
-      const leadValue = Math.max(a, b);
-      return {
-        title: `${leader} lidera em ${metric}`,
-        detail: `Vantagem de ${leadValue.toFixed(1)}${suffix}.`
-      };
-    };
+  const comparisonData = metricRows.map(row => ({
+    metric: row.label,
+    a: row.a,
+    b: row.b,
+    delta: row.a - row.b,
+    format: row.format,
+  }));
 
-    return [
-      pickLeader(teamAMetrics.roundWinRate, teamBMetrics.roundWinRate, 'Win Rate (rounds)'),
-      pickLeader(teamAMetrics.pistolWinRate, teamBMetrics.pistolWinRate, 'Pistol win'),
-      pickLeader(teamAMetrics.plantRate, teamBMetrics.plantRate, 'Plant rate', '%'),
-      pickLeader(teamAMetrics.defuseRate, teamBMetrics.defuseRate, 'Defuse rate', '%'),
-      pickLeader(teamAMetrics.avgKills, teamBMetrics.avgKills, 'Kills médios', ''),
-    ].filter(Boolean) as { title: string; detail: string }[];
-  }, [teamA, teamB, teamAMetrics, teamBMetrics]);
+  const strongestDeltas = [...comparisonData]
+    .sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta))
+    .slice(0, 3);
+
+  const totalRounds = (teamAStats?.roundsPlayed ?? 0) + (teamBStats?.roundsPlayed ?? 0);
+  const sampleConfidence = totalRounds >= 120 ? 'Alta' : totalRounds >= 60 ? 'Média' : 'Baixa';
+
+  const edgeScore = useMemo(() => {
+    const weights = {
+      roundWinRate: 0.4,
+      pistolWinRate: 0.15,
+      plantRate: 0.1,
+      detonationRate: 0.1,
+      defuseRate: 0.1,
+      avgKills: 0.15,
+    };
+    const killScale = 5;
+    const score =
+      (teamAMetrics.roundWinRate - teamBMetrics.roundWinRate) * weights.roundWinRate +
+      (teamAMetrics.pistolWinRate - teamBMetrics.pistolWinRate) * weights.pistolWinRate +
+      (teamAMetrics.plantRate - teamBMetrics.plantRate) * weights.plantRate +
+      (teamAMetrics.detonationRate - teamBMetrics.detonationRate) * weights.detonationRate +
+      (teamAMetrics.defuseRate - teamBMetrics.defuseRate) * weights.defuseRate +
+      (teamAMetrics.avgKills - teamBMetrics.avgKills) * killScale * weights.avgKills;
+    return score;
+  }, [teamAMetrics, teamBMetrics]);
+
+  const edgeLeader = edgeScore === 0 ? 'Empate' : edgeScore > 0 ? teamA : teamB;
+  const edgeMagnitude = Math.abs(edgeScore);
+
+  const insights = useMemo(() => {
+    if (!teamA || !teamB) return [] as { title: string; detail: string }[];
+
+    const leaderFor = (a: number, b: number) => (a === b ? 'Empate' : a > b ? teamA : teamB);
+    const diff = (a: number, b: number) => Math.abs(a - b);
+    const fmt = (value: number, suffix: string) => `${value.toFixed(1)}${suffix}`;
+
+    const insightsList: { title: string; detail: string }[] = [];
+
+    const winDiff = diff(teamAMetrics.roundWinRate, teamBMetrics.roundWinRate);
+    insightsList.push({
+      title: winDiff >= 8 ? 'Favorito claro no mapa' : winDiff >= 4 ? 'Leve vantagem no mapa' : 'Mapa equilibrado',
+      detail: `${leaderFor(teamAMetrics.roundWinRate, teamBMetrics.roundWinRate)} com diferencial de ${fmt(winDiff, '%')} em win rate.`,
+    });
+
+    const pistolDiff = diff(teamAMetrics.pistolWinRate, teamBMetrics.pistolWinRate);
+    insightsList.push({
+      title: pistolDiff >= 10 ? 'Valor em pistol rounds' : 'Pistol rounds sem gap forte',
+      detail: `${leaderFor(teamAMetrics.pistolWinRate, teamBMetrics.pistolWinRate)} abre rounds com ${fmt(pistolDiff, '%')} de vantagem.`,
+    });
+
+    const execDiff = diff(teamAMetrics.plantRate, teamBMetrics.plantRate);
+    insightsList.push({
+      title: execDiff >= 8 ? 'T-side agressivo' : 'Execucao T equilibrada',
+      detail: `${leaderFor(teamAMetrics.plantRate, teamBMetrics.plantRate)} planta em ${fmt(execDiff, '%')} mais rounds no lado T.`,
+    });
+
+    const clutchDiff = diff(teamAMetrics.defuseRate, teamBMetrics.defuseRate);
+    insightsList.push({
+      title: clutchDiff >= 8 ? 'CT com boa conversao' : 'Defuse rate sem gap forte',
+      detail: `${leaderFor(teamAMetrics.defuseRate, teamBMetrics.defuseRate)} tem ${fmt(clutchDiff, '%')} de vantagem em defuses.`,
+    });
+
+    const detDiff = diff(teamAMetrics.detonationRate, teamBMetrics.detonationRate);
+    insightsList.push({
+      title: detDiff >= 6 ? 'Conversao de plantas alta' : 'Conversao de plantas parelha',
+      detail: `${leaderFor(teamAMetrics.detonationRate, teamBMetrics.detonationRate)} converte bombas em ${fmt(detDiff, '%')} mais rounds.`,
+    });
+
+    insightsList.push({
+      title: edgeMagnitude >= 6 ? 'Edge geral consistente' : 'Edge geral baixo',
+      detail: `${edgeLeader} com score de vantagem ${edgeMagnitude.toFixed(1)}. Confianca ${sampleConfidence.toLowerCase()}.`,
+    });
+
+    return insightsList;
+  }, [teamA, teamB, teamAMetrics, teamBMetrics, edgeMagnitude, edgeLeader, sampleConfidence]);
 
   const StatCard = ({ title, value, subtext, color }: { title: string; value: string; subtext: string; color: string }) => (
     <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-5 rounded-xl shadow-[0_6px_16px_rgba(0,0,0,0.2)]">
@@ -285,49 +346,81 @@ const Comparison: React.FC<ComparisonProps> = ({ matches }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-blue-900/25 to-slate-950 border border-blue-500/30 rounded-2xl p-6 shadow-[0_10px_24px_rgba(0,0,0,0.25)]">
+        <div className="bg-gradient-to-br from-emerald-900/25 to-slate-950 border border-emerald-500/30 rounded-2xl p-6 shadow-[0_10px_24px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
               {teamA && teamLogos[teamA] ? (
                 <img src={teamLogos[teamA]} alt={teamA} className="w-full h-full object-contain" />
               ) : (
-                <span className="text-blue-300 font-bold">A</span>
+                <span className="text-emerald-300 font-bold">A</span>
               )}
             </div>
             <div>
-              <div className="text-blue-100 text-sm uppercase tracking-wider">{teamA || 'Time A'}</div>
+              <div className="text-emerald-100 text-sm uppercase tracking-wider">{teamA || 'Time A'}</div>
               <div className="text-xs text-slate-400">Resumo do time</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <StatCard title="Partidas" value={`${teamAStats?.matchesPlayed ?? 0}`} subtext="Jogadas" color="blue" />
-            <StatCard title="Rounds" value={`${teamAStats?.roundsPlayed ?? 0}`} subtext="Totais" color="blue" />
-            <StatCard title="Win Rate" value={`${teamAMetrics.roundWinRate.toFixed(1)}%`} subtext="Rounds vencidos" color="blue" />
-            <StatCard title="Pistol" value={`${teamAMetrics.pistolWinRate.toFixed(1)}%`} subtext="Rounds 1 e 13" color="blue" />
+            <StatCard title="Partidas" value={`${teamAStats?.matchesPlayed ?? 0}`} subtext="Jogadas" color="emerald" />
+            <StatCard title="Rounds" value={`${teamAStats?.roundsPlayed ?? 0}`} subtext="Totais" color="emerald" />
+            <StatCard title="Win Rate" value={`${teamAMetrics.roundWinRate.toFixed(1)}%`} subtext="Rounds vencidos" color="emerald" />
+            <StatCard title="Pistol" value={`${teamAMetrics.pistolWinRate.toFixed(1)}%`} subtext="Rounds 1 e 13" color="emerald" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-900/25 to-slate-950 border border-purple-500/30 rounded-2xl p-6 shadow-[0_10px_24px_rgba(0,0,0,0.25)]">
+        <div className="bg-gradient-to-br from-amber-900/25 to-slate-950 border border-amber-500/30 rounded-2xl p-6 shadow-[0_10px_24px_rgba(0,0,0,0.25)]">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
               {teamB && teamLogos[teamB] ? (
                 <img src={teamLogos[teamB]} alt={teamB} className="w-full h-full object-contain" />
               ) : (
-                <span className="text-purple-300 font-bold">B</span>
+                <span className="text-amber-300 font-bold">B</span>
               )}
             </div>
             <div>
-              <div className="text-purple-100 text-sm uppercase tracking-wider">{teamB || 'Time B'}</div>
+              <div className="text-amber-100 text-sm uppercase tracking-wider">{teamB || 'Time B'}</div>
               <div className="text-xs text-slate-400">Resumo do time</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <StatCard title="Partidas" value={`${teamBStats?.matchesPlayed ?? 0}`} subtext="Jogadas" color="purple" />
-            <StatCard title="Rounds" value={`${teamBStats?.roundsPlayed ?? 0}`} subtext="Totais" color="purple" />
-            <StatCard title="Win Rate" value={`${teamBMetrics.roundWinRate.toFixed(1)}%`} subtext="Rounds vencidos" color="purple" />
-            <StatCard title="Pistol" value={`${teamBMetrics.pistolWinRate.toFixed(1)}%`} subtext="Rounds 1 e 13" color="purple" />
+            <StatCard title="Partidas" value={`${teamBStats?.matchesPlayed ?? 0}`} subtext="Jogadas" color="amber" />
+            <StatCard title="Rounds" value={`${teamBStats?.roundsPlayed ?? 0}`} subtext="Totais" color="amber" />
+            <StatCard title="Win Rate" value={`${teamBMetrics.roundWinRate.toFixed(1)}%`} subtext="Rounds vencidos" color="amber" />
+            <StatCard title="Pistol" value={`${teamBMetrics.pistolWinRate.toFixed(1)}%`} subtext="Rounds 1 e 13" color="amber" />
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-300">
+              <Scale size={18} />
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-slate-400">Edge Geral</div>
+              <div className="text-lg font-semibold text-white">{edgeLeader}</div>
+            </div>
+          </div>
+          <div className="text-3xl font-bold text-white">{edgeMagnitude.toFixed(1)}</div>
+          <div className="text-xs text-slate-400 mt-2">Confianca: {sampleConfidence} | Base: {totalRounds} rounds</div>
+        </div>
+        {strongestDeltas.map((item, idx) => {
+          const isPositive = item.delta >= 0;
+          const iconColor = isPositive ? 'text-emerald-300' : 'text-amber-300';
+          const iconBg = isPositive ? 'bg-emerald-500/20' : 'bg-amber-500/20';
+          const label = item.format === '%' ? `${Math.abs(item.delta).toFixed(1)}%` : Math.abs(item.delta).toFixed(2);
+          return (
+            <div key={idx} className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
+              <div className={`p-2 rounded-lg inline-flex ${iconBg} ${iconColor} mb-3`}>
+                {isPositive ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+              </div>
+              <div className="text-sm text-slate-300">{item.metric}</div>
+              <div className="text-2xl font-bold text-white">{label}</div>
+              <div className="text-xs text-slate-400 mt-1">Vantagem de {isPositive ? teamA || 'Time A' : teamB || 'Time B'}</div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-6">
@@ -357,21 +450,25 @@ const Comparison: React.FC<ComparisonProps> = ({ matches }) => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-lg font-bold text-white">Comparativo de métricas</h3>
-            <p className="text-slate-400 text-xs">Indicadores por lado e objetivos</p>
+            <p className="text-slate-400 text-xs">Leitura vertical para enxergar gaps rapidamente</p>
           </div>
         </div>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={comparisonData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <XAxis dataKey="metric" stroke="#94a3b8" tick={{ fontSize: 12 }} />
-              <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+            <BarChart data={comparisonData} layout="vertical" margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
+              <XAxis type="number" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+              <YAxis dataKey="metric" type="category" width={140} stroke="#94a3b8" tick={{ fontSize: 12 }} />
               <Tooltip
+                formatter={(value: number, name: string, props: any) => {
+                  const format = props?.payload?.format || '';
+                  return [`${value.toFixed(1)}${format}`, name === 'a' ? teamA || 'Time A' : teamB || 'Time B'];
+                }}
                 contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', borderRadius: '8px', color: '#fff' }}
                 cursor={{ fill: '#334155', opacity: 0.2 }}
               />
-              <Legend />
-              <Bar dataKey={teamA || 'Time A'} fill="#60a5fa" radius={[4, 4, 0, 0]} />
-              <Bar dataKey={teamB || 'Time B'} fill="#a78bfa" radius={[4, 4, 0, 0]} />
+              <Legend formatter={(value) => (value === 'a' ? teamA || 'Time A' : teamB || 'Time B')} />
+              <Bar dataKey="a" fill="#34d399" radius={[0, 6, 6, 0]} />
+              <Bar dataKey="b" fill="#f59e0b" radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
